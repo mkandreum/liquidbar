@@ -210,7 +210,9 @@ fun LiquidPillBar(
             hovered = target
             scope.launch { x.animateTo(centreOf(target), travel) }
             scope.launch { w.animateTo(widths[target], stretch) }
-            if (target != selectedIndex) select(target)
+            // Siempre avisa: selectedIndex puede estar desfasado dentro del pointerInput y, si la app
+            // arrancó en la primera pestaña, soltar sobre ella no seleccionaba nada.
+            select(target)
         }
     }
 
