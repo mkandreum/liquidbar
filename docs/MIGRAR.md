@@ -123,7 +123,7 @@ colors = LiquidBarColors(
 val miCristal = LiquidGlassStyle(
     surface = colorSuperficie.copy(alpha = 0.45f), // tinte de la app
     fallback = colorSuperficie.copy(alpha = 0.96f), // Android < 12
-    // blur, saturación y refracción: los de Convx por defecto
+    // blur, saturación y refracción: los del cristal por defecto
 )
 ```
 

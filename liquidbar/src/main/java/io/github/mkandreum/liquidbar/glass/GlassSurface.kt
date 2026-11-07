@@ -55,7 +55,7 @@ data class GlassLook(
     val refractionAmount: Float = 0f,
     /** Separación de canales en la refracción (0 = sin arcoíris). */
     val dispersion: Float = 0f,
-    /** Suma la dirección radial a la normal: lente abombada (como el puck de Convx). */
+    /** Suma la dirección radial a la normal: lente abombada. */
     val depthEffect: Boolean = false,
     val surface: Color = Color.Transparent,
     val rim: Color = Color.Transparent,
@@ -212,7 +212,7 @@ private class GlassNode(
 }
 
 /**
- * Refracción del canto, portada de la lente de Convx/Kyant. Dentro de la forma, a más de `band` del borde, el
+ * Refracción del canto de una lente de vidrio. Dentro de la forma, a más de `band` del borde, el
  * fondo pasa tal cual. En la franja del borde se muestrea **hacia dentro** siguiendo la normal de la forma, con
  * un perfil circular: el filo enseña el contenido que hay bajo el cristal (aumentado) y nunca arrastra el de
  * fuera de la barra. `depthEffect` suma la dirección radial a la normal (lente abombada) y `dispersion` cruza
@@ -265,7 +265,7 @@ half4 main(float2 coord) {
     // Muestrea HACIA DENTRO: el filo enseña el contenido que hay bajo el cristal, no el de fuera.
     float2 refracted = coord - n * bend;
     if (dispersion <= 0.0) return content.eval(refracted);
-    // Aberración como en Convx: nula en los ejes y máxima en las diagonales; rojo y azul se cruzan.
+    // Aberración de la lente: nula en los ejes y máxima en las diagonales; rojo y azul se cruzan.
     float intensity = dispersion * (p.x * p.y) / max((size.x * 0.5) * (size.y * 0.5), 0.0001);
     float2 spread = n * bend * intensity;
     half4 cR = content.eval(refracted - spread);

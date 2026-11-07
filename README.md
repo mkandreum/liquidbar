@@ -21,7 +21,7 @@ Píldora de 64 dp con pestañas de icono; la activa se expande en cápsula con s
 
 ## Cristal
 
-`Modifier.liquidGlass(backdrop, shape, style)` sirve para cualquier superficie redondeada (botones, avisos, menús). `LiquidGlassStyle` fija la física (la de Convx): desenfoque 4 dp, saturación ×1,5, canto que refracta 24 dp hacia dentro, tinte, filo de luz y contorno oscuro. Hay `LiquidGlassStyle.Dark` y `.Light`.
+`Modifier.liquidGlass(backdrop, shape, style)` sirve para cualquier superficie redondeada (botones, avisos, menús). `LiquidGlassStyle` fija la física del cristal líquido: desenfoque 4 dp, saturación ×1,5, canto que refracta 24 dp hacia dentro, tinte, filo de luz y contorno oscuro. Hay `LiquidGlassStyle.Dark` y `.Light`.
 
 Debajo, el paquete `glass` es un motor propio:
 

@@ -14,7 +14,7 @@ import kotlin.math.abs
 
 /** Cuándo se pliega la barra. */
 enum class LiquidFoldMode {
-    /** Se pliega en cuanto la lista se mueve y solo se abre al volver arriba del todo (como Convx). */
+    /** Se pliega en cuanto la lista se mueve y solo se abre al volver arriba del todo. */
     ExpandedAtTop,
     /** Se pliega al bajar un trecho y se abre al subir un poco, en cualquier punto de la lista. */
     ByDirection,

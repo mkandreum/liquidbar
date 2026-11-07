@@ -100,7 +100,7 @@ Box(Modifier.fillMaxSize().background(Ink.bg)) {
 | La barra original es… | Usa | Por qué |
 |---|---|---|
 | Píldora fina de iconos, la activa se expande con etiqueta, `+` en medio o al lado (ZaveBill) | `LiquidPillBar` | conserva la píldora y la respuesta; la cápsula activa se convierte en lente |
-| Cápsula ancha con icono **sobre** etiqueta en todas las pestañas (estilo iOS 26 / Convx) | `LiquidBar` | lupa arrastrable, plegado al hacer scroll, acción que se separa |
+| Cápsula ancha con icono **sobre** etiqueta en todas las pestañas (estilo iOS 26) | `LiquidBar` | lupa arrastrable, plegado al hacer scroll, acción que se separa |
 | Cualquier otra forma | `Modifier.liquidGlass(backdrop, shape, style)` sobre tu propio `Row` | solo cambia el fondo; el resto es tuyo |
 
 ---
@@ -163,7 +163,7 @@ Comportamiento que se obtiene sin escribir nada más (detalle, valores y cómo a
 
 ## 5. Ajustar el cristal a la paleta
 
-`LiquidGlassStyle.Dark` reproduce el cristal de Convx: tinte `#121212` al 40 %, desenfoque de 4 dp, saturación ×1,5, canto de 24 dp que refracta 24 dp **hacia dentro**, filo `#E8E8E8` al 18 % y contorno oscuro al 19 %. Para una app con color propio, cambia solo el tinte:
+`LiquidGlassStyle.Dark` reproduce el cristal líquido de iOS 26: tinte `#121212` al 40 %, desenfoque de 4 dp, saturación ×1,5, canto de 24 dp que refracta 24 dp **hacia dentro**, filo `#E8E8E8` al 18 % y contorno oscuro al 19 %. Para una app con color propio, cambia solo el tinte:
 
 ```kotlin
 /** Cristal de ZaveBill: el de la barra de pestañas, con el velo teñido de tinta vino. */
@@ -281,7 +281,7 @@ La lente son **dos capas de cristal apiladas en el mismo sitio**, más un truco:
 - fuera de la franja del canto (`refractionHeight`) el fondo pasa tal cual;
 - dentro, muestrea **hacia dentro** siguiendo la normal del borde, con un perfil circular `(1 − √(1 − t²)) × refractionAmount`, como el canto pulido de un vidrio: casi nada al empezar la franja y el máximo en el filo; así el filo aumenta lo que hay debajo y no arrastra el contenido de fuera;
 - **aberración cromática** (`dispersion = 1`): cinco muestras repartidas a lo largo de la normal (rojo, amarillo, verde, cian, azul). La separación crece hacia las diagonales y cambia de signo por cuadrante (`n.x · n.y`), así rojo y azul se cruzan en cada esquina, como en iOS.
-- la franja muestrea **hacia dentro** de la forma (como la lente de Convx/Kyant): el filo enseña el contenido que hay bajo el cristal y nunca arrastra el texto de fuera de la barra; `depthEffect` suma la dirección radial a la normal y `dispersion` cruza rojo y azul en las diagonales.
+- la franja muestrea **hacia dentro** de la forma (como una lente de vidrio): el filo enseña el contenido que hay bajo el cristal y nunca arrastra el texto de fuera de la barra; `depthEffect` suma la dirección radial a la normal y `dispersion` cruza rojo y azul en las diagonales.
 
 **Presión `p` (0 → 1).** Todo lo que cambia al pulsar se interpola con `p`:
 

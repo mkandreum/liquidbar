@@ -255,7 +255,7 @@ fun LiquidPillBar(
         Box(
             Modifier.clearAndSetSemantics {}.alpha(0f).glassSource(tabsBackdrop)
                 .graphicsLayer { val s = lerp(1f, 1.12f, press.value); scaleX = s; scaleY = s; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(x.value / size.width.coerceAtLeast(1f), 0.5f) }
-                // Pulsada, la copia se tiñe como en Convx; en reposo el icono/etiqueta ya van sobre el acento.
+                // Pulsada, la copia se tiñe como en la lente; en reposo el icono/etiqueta ya van sobre el acento.
                 .graphicsLayer { colorFilter = if (press.value > 0.01f) ColorFilter.tint(colors.accent) else null }
         ) { tabRow(false) }
 
