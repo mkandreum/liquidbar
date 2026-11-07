@@ -2,6 +2,8 @@
 
 Esta guía convierte una barra inferior Compose «normal» (fondo sólido, borde, sombra) en una barra de cristal líquido con `liquidbar`, conservando su forma y su forma de responder. Es el mismo proceso que se siguió en **ZaveBill 3.5**, que se usa como ejemplo real en cada paso.
 
+La lupa, los muelles y las animaciones están explicados a fondo en la [sección 9](#9-lupa-animaciones-y-muelles).
+
 Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden.
 
 ---
@@ -151,7 +153,7 @@ LiquidPillBar(
 )
 ```
 
-Comportamiento que se obtiene sin escribir nada más:
+Comportamiento que se obtiene sin escribir nada más (detalle, valores y cómo ajustarlo en la [sección 9](#9-lupa-animaciones-y-muelles)):
 - en reposo, la cápsula activa es sólida del color de acento, como antes;
 - al tocar otra pestaña viaja con un muelle (`dampingRatio 0.62`, `stiffness 420`) que se pasa un poco y vuelve, y se estira con la velocidad;
 - mantenida pulsada crece (×1,18 de ancho, ×1,3 de alto), su relleno se aclara a cristal y refracta con aberración cromática el fondo y los iconos, que se ven ampliados ×1,12;
@@ -262,7 +264,142 @@ LiquidBar(
 
 ---
 
-## 9. Errores conocidos y cómo se resolvieron
+## 9. Lupa, animaciones y muelles
+
+Esta es la parte que hace que la barra se sienta «líquida». Todo está ya dentro de `LiquidPillBar` y `LiquidBar`: al portar no hay que programarlo, pero sí entender qué hace cada pieza para poder **ajustarla** o **montarla en una barra propia**.
+
+### 9.1 Cómo funciona la lupa
+
+La lente son **dos capas de cristal apiladas en el mismo sitio**, más un truco:
+
+1. **Copia invisible de las pestañas.** Las pestañas se componen dos veces. La segunda copia tiene `alpha(0f)` (no se ve) y lleva `glassSource(tabsBackdrop)`, así que queda grabada en una capa. En `LiquidBar` esa copia además va teñida del color de acento (`ColorFilter.tint`) y escalada ×1,2 al pulsar; en `LiquidPillBar`, escalada ×1,12 alrededor del centro de la lente.
+2. **Capa 1, cuerpo de la lente** (`glassSurface`): pinta el fondo de la pantalla y, mientras se pulsa, también la propia cápsula de la barra (`surfaceBackdrop`) con opacidad igual a la presión, para que al soltar no haya salto. Encima, el relleno: en reposo es el acento sólido (píldora) o un velo blanco del 10 % (cápsula), y se aclara a cristal al pulsar.
+3. **Capa 2, iconos a través de la lente**: pinta la copia invisible del paso 1 con la misma refracción. Por eso los iconos que pisa la lente se ven ampliados y doblados por el canto.
+
+**El shader de refracción** (`glass/GlassSurface.kt`, AGSL, Android 13+):
+- calcula la distancia firmada al borde de la forma redondeada;
+- fuera de la franja del canto (`refractionHeight`) el fondo pasa tal cual;
+- dentro, muestrea más hacia fuera siguiendo la normal del borde, con un perfil circular `(1 − √(1 − t²)) × refractionAmount`, como el canto pulido de un vidrio: casi nada al empezar la franja y el máximo en el filo;
+- **aberración cromática** (`dispersion = 1`): cinco muestras repartidas a lo largo de la normal (rojo, amarillo, verde, cian, azul). La separación crece hacia las diagonales y cambia de signo por cuadrante (`n.x · n.y`), así rojo y azul se cruzan en cada esquina, como en iOS.
+
+**Presión `p` (0 → 1).** Todo lo que cambia al pulsar se interpola con `p`:
+
+| Propiedad | Reposo (`p = 0`) | Pulsada (`p = 1`) | Píldora | Cápsula |
+|---|---|---|---|---|
+| Refracción del canto | 0 | 10 dp de franja, 14 dp de desvío | ✔ | ✔ |
+| Aberración cromática | — | `dispersion = 1` | ✔ | ✔ |
+| Desenfoque del fondo | 6 dp (píldora) / 8 dp (cápsula) | 0 | ✔ | ✔ |
+| Saturación | ×1,6 / ×1,5 | igual | ✔ | ✔ |
+| Relleno | acento sólido | acento al 18 % | ✔ | — |
+| Velo | blanco 10 % | negro 3 % | — | ✔ |
+| Filo de luz | blanco 18 % / 0 % | blanco 50 % | ✔ | ✔ |
+| Sombra exterior | 0 | 24 dp, negro 10 % | ✔ | ✔ |
+| Sombra interior | 0 | 8 dp, negro 15 % | ✔ | ✔ |
+| Tamaño | pestaña | ×1,18 ancho y ×1,3 alto (píldora) · ×78/56 (cápsula) | ✔ | ✔ |
+| Iconos bajo la lente | ×1 | ×1,12 (píldora) · ×1,2 (cápsula) | ✔ | ✔ |
+
+El crecimiento se hace con `Modifier.layout` (la lente **mide más**, no se escala), para que la refracción tenga más superficie de verdad y no se pixele.
+
+### 9.2 Los muelles
+
+Valores exactos (`dampingRatio`, `stiffness`). Cuanto menor el amortiguamiento, más se pasa y rebota; cuanto mayor la rigidez, más rápido.
+
+**Píldora (`LiquidPillBar`)**
+
+| Qué se mueve | Muelle | Efecto |
+|---|---|---|
+| Centro de la lente al viajar | `spring(0.62, 420)` | se pasa ~8 % y vuelve |
+| Anchura de la lente | `spring(0.5, 420)` | rebota más que la posición: «gelatina» |
+| Presión al pulsar / al viajar | `spring(1, 1000)` | instantánea, sin rebote |
+| Presión al soltar | `spring(1, 600)` | suelta algo más despacio |
+| Estiramiento por velocidad | `ancho × (1 + v)`, `alto × (1 − 0,45·v)`, con `v = |velocidad| / 5000` y tope 0,22 | se alarga y aplana al acelerar |
+| Se suelta cuando… | está a menos de 8 dp de su pestaña **y** ya no se mueve | nunca se queda «en lupa» |
+| «Pop» del icono al activarse | salta a 0,6 y vuelve con `spring(0.35, Medium)` | rebote marcado |
+| Etiqueta al desplegarse / plegarse | `spring(0.75, 500)` / `spring(0.9, 500)` | abre con algo de rebote, cierra seca |
+| Pulsar una pestaña | escala 0,95 con `spring(0.6, 800)` | respuesta táctil |
+
+**Cápsula (`LiquidBar`) e indicador arrastrable (`glass/LensDrag`)**
+
+| Qué se mueve | Muelle | Efecto |
+|---|---|---|
+| Posición del indicador (sigue al dedo) | `spring(1, 1000)` | pegado al dedo |
+| Velocidad (para deformar) | `spring(0.5, 300)` | la deformación tiembla un poco al parar |
+| Presión | `spring(1, 1000)` | |
+| Escala X / Y al pulsar | `spring(0.6, 250)` / `spring(0.7, 250)` | ancho y alto rebotan desfasados: parece líquido |
+| Deformación por velocidad | `escalaX / (1 − 0,75·v)`, `escalaY × (1 − 0,25·v)`, `v` entre −0,2 y 0,2 | más ancha y baja al acelerar |
+| Se suelta cuando… | el valor está a menos del 2,5 % del recorrido de su destino | la lupa se ve viajar antes de soltarse |
+| Tirón de la fila al arrastrar | la cápsula entera se desplaza hasta 4 dp hacia el dedo (`EaseOut`) y vuelve con `spring(1, 300)` | sensación de que tiras de ella |
+| Plegar con el scroll | `tween(560 ms, SpringEasing(0.55))` | se pasa ~12 % |
+| Abrir | `tween(470 ms, SpringEasing(0.74))` | casi sin pasarse |
+| Etiquetas al plegar | opacidad `1 − 3·pliegue` | desaparecen en el primer tercio |
+| Rebote del icono (al activar, aparecer, plegar o abrir) | encoge a 0,8 en 90 ms y vuelve con `spring(0.4, 520)` | |
+
+**`SpringEasing`** (`LiquidMotion.kt`) es un muelle real comprimido en una duración fija. Se usa para el plegado porque anchura, posiciones y fundidos tienen que terminar en el **mismo fotograma**, y un `spring()` normal no tiene duración conocida. `SpringEasing(0.55)` ≈ 12 % de rebote; `SpringEasing(0.74)` ≈ 3 %.
+
+### 9.3 Brillo y estiramiento al tocar
+
+- **`GlassGlow`**: al tocar, la pieza se aclara un 8 % (mezcla `Plus`) y una luz radial del 15 % sigue al dedo. Entra y sale con `spring(0.5, 300)`. No consume eventos, así que los `clickable` de debajo siguen funcionando. Se aplica a la cápsula entera, a los círculos y a los botones de cristal.
+- **Estiramiento elástico** (`elasticStretch`): al pulsar, la pieza se infla 4 dp y sigue al dedo con resistencia (`tanh`), alargándose en la dirección del arrastre. Lo usan los círculos plegados de `LiquidBar`.
+
+### 9.4 Cómo ajustarlo
+
+| Quiero… | Cambia | Dónde |
+|---|---|---|
+| Más rebote al cambiar de pestaña | baja `dampingRatio` de `travel` (0,62 → 0,5) | `LiquidPillBar.kt` |
+| Lente más «gelatina» | baja el de `stretch` (0,5 → 0,4) | `LiquidPillBar.kt` |
+| Lupa más grande al pulsar | `1.18f` / `1.3f` del bloque `layout`, y `pressedScale` en `LiquidBar` | `LiquidPillBar.kt`, `LiquidBar.kt` |
+| Más o menos aumento de los iconos | `1.12f` (píldora) / `1.2f` (cápsula) | idem |
+| Refracción más fuerte en la lente | `10.dp` (franja) y `14.dp` (desvío) | las dos capas de la lente |
+| Menos arcoíris | `dispersion = 1f` → `0.4f`; `0f` lo quita | idem |
+| Plegado más o menos elástico | `FoldEasing` / `UnfoldEasing` y sus duraciones | `LiquidMotion.kt` |
+| Sin lupa (solo el viaje con muelle) | la presión no subirá si pones `holding = false`; o usa la opción 4a con tus pestañas | `LiquidPillBar.kt` |
+
+Ajusta **en la librería** (repo `liquidbar`) y vuelve a copiarla al proyecto, para que todas las apps compartan el mismo comportamiento.
+
+### 9.5 Montar la lupa en una barra propia
+
+Si la barra no encaja con ninguno de los dos estilos, la receta es la misma que usan ellos:
+
+```kotlin
+val scope = rememberCoroutineScope()
+val tabsBackdrop = rememberGlassBackdrop()      // la copia de las pestañas
+val surfaceBackdrop = rememberGlassBackdrop()   // la superficie de la barra
+val x = remember { Animatable(0f) }             // centro de la lente (px)
+val press = remember { Animatable(0f) }         // 0 reposo · 1 pulsada
+
+Box(barModifier) {
+    // 1 · superficie en capa SIN hijos (si no, ciclo de render)
+    Box(Modifier.matchParentSize().glassSource(surfaceBackdrop).liquidGlass(backdrop, CircleShape, estilo))
+    // 2 · pestañas visibles
+    MisPestañas(interactive = true)
+    // 3 · copia invisible que la lente amplía
+    Box(Modifier.alpha(0f).glassSource(tabsBackdrop)
+        .graphicsLayer { val s = lerp(1f, 1.12f, press.value); scaleX = s; scaleY = s }) {
+        MisPestañas(interactive = false)          // sin clickable: si no, roba los toques
+    }
+    // 4 · la lente: dos glassSurface en el mismo sitio
+    val sitio = Modifier.offset { IntOffset((x.value - ancho / 2).roundToInt(), 0) }.size(anchoDp, altoDp)
+    Box(sitio.pointerInput(Unit) { /* arrastre: snapTo de x; press a 1 al bajar y a 0 al llegar */ }
+        .glassSurface({ listOf(GlassSource(backdrop), GlassSource(surfaceBackdrop, press.value)) }, CircleShape) {
+            val p = press.value
+            GlassLook(blur = 6.dp.toPx() * (1 - p), refractionHeight = 10.dp.toPx() * p,
+                refractionAmount = 14.dp.toPx() * p, dispersion = 1f, surface = acento.copy(alpha = 1 - 0.82f * p),
+                shadowAlpha = p, innerShadowAlpha = p, innerShadowRadius = 8.dp.toPx() * p)
+        })
+    Box(sitio.glassSurface({ listOf(GlassSource(tabsBackdrop)) }, CircleShape) {
+        GlassLook(refractionHeight = 10.dp.toPx() * press.value, refractionAmount = 14.dp.toPx() * press.value, dispersion = 1f)
+    })
+}
+```
+
+Tres reglas que salen de los fallos reales:
+1. **La superficie que la lente refracta va en una capa sin hijos** (paso 1); si no, la app se cierra.
+2. **La copia invisible no puede ser clicable**, o roba los toques a las pestañas visibles y desaparece su animación de pulsado.
+3. **La presión se maneja con un único observador permanente**: `LaunchedEffect(Unit) { snapshotFlow { arrastrando || viajando }.collectLatest { press.animateTo(if (it) 1f else 0f, …) } }`. Con `LaunchedEffect(estado)` a veces no se recompone y la lente se queda pulsada.
+
+---
+
+## 10. Errores conocidos y cómo se resolvieron
 
 | Síntoma | Causa | Solución |
 |---|---|---|
@@ -275,7 +412,7 @@ LiquidBar(
 
 ---
 
-## 10. Comprobación final
+## 11. Comprobación final
 
 1. `./gradlew :app:assembleDebug` y `:app:assembleRelease` (R8 no necesita reglas extra).
 2. En emulador o móvil con Android 13 o superior:
