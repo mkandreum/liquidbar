@@ -29,10 +29,12 @@ import kotlin.math.tanh
 @Immutable
 data class LiquidGlassStyle(
     val blur: Dp = 3.dp,
-    val saturation: Float = 2f,
-    val refractionHeight: Dp = 28.8.dp,
-    val refractionAmount: Dp = 33.1.dp,
-    val surface: Color = Color(0xFF171717).copy(alpha = 0.50f),
+    val saturation: Float = 1.5f,
+    val refractionHeight: Dp = 24.dp,
+    val refractionAmount: Dp = 24.dp,
+    /** Lente abombada: suma la dirección radial a la normal (más aumento en el centro del canto). */
+    val depthEffect: Boolean = false,
+    val surface: Color = Color(0xFF121212).copy(alpha = 0.40f),
     val rim: Color = Color(0xFFE8E8E8).copy(alpha = 0.18f),
     val rimWidth: Dp = 0.8.dp,
     val lightAngle: Float = 45f,
@@ -65,6 +67,7 @@ fun Modifier.liquidGlass(
             saturation = style.saturation,
             refractionHeight = style.refractionHeight.toPx(),
             refractionAmount = style.refractionAmount.toPx(),
+            depthEffect = style.depthEffect,
             surface = if (tint == Color.Unspecified) style.surface else tint.compositeOver(style.surface),
             rim = style.rim,
             rimWidth = style.rimWidth.toPx(),

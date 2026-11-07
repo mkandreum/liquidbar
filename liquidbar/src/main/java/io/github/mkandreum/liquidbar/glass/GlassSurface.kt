@@ -55,6 +55,8 @@ data class GlassLook(
     val refractionAmount: Float = 0f,
     /** Separación de canales en la refracción (0 = sin arcoíris). */
     val dispersion: Float = 0f,
+    /** Suma la dirección radial a la normal: lente abombada (como el puck de Convx). */
+    val depthEffect: Boolean = false,
     val surface: Color = Color.Transparent,
     val rim: Color = Color.Transparent,
     val rimWidth: Float = 0f,
@@ -186,16 +188,13 @@ private class GlassNode(
     private fun DrawScope.refraction(l: GlassLook, pad: Float): RenderEffect {
         val s = (shader as? RuntimeShader) ?: RuntimeShader(RefractionAgsl).also { shader = it }
         val r = cornerRadii()
-        // El canto se limita a una fracción del lado corto: en superficies pequeñas (una píldora de 48 dp)
-        // una franja absoluta de 28,8 dp se come el centro y arrastra el contenido de fuera como un fantasma.
-        val band = l.refractionHeight.coerceAtMost(size.minDimension * 0.16f)
-        val amount = l.refractionAmount.coerceAtMost(size.minDimension * 0.20f)
         s.setFloatUniform("size", size.width, size.height)
         s.setFloatUniform("pad", pad)
         s.setFloatUniform("radii", r[0], r[1], r[2], r[3])
-        s.setFloatUniform("band", band)
-        s.setFloatUniform("amount", amount)
+        s.setFloatUniform("band", l.refractionHeight)
+        s.setFloatUniform("amount", l.refractionAmount)
         s.setFloatUniform("dispersion", l.dispersion)
+        s.setFloatUniform("depthEffect", if (l.depthEffect) 1f else 0f)
         return RenderEffect.createRuntimeShaderEffect(s, "content")
     }
 
@@ -213,10 +212,11 @@ private class GlassNode(
 }
 
 /**
- * Refracción del canto. Dentro de la forma, a más de `band` del borde, el fondo pasa tal cual. En la franja
- * del borde se muestrea más hacia fuera siguiendo la normal de la forma, con un perfil circular (como el
- * canto pulido de un vidrio): casi nada al empezar la franja y `amount` en el filo. Con `dispersion` cada
- * canal se desvía un poco distinto y aparece un leve arcoíris.
+ * Refracción del canto, portada de la lente de Convx/Kyant. Dentro de la forma, a más de `band` del borde, el
+ * fondo pasa tal cual. En la franja del borde se muestrea **hacia dentro** siguiendo la normal de la forma, con
+ * un perfil circular: el filo enseña el contenido que hay bajo el cristal (aumentado) y nunca arrastra el de
+ * fuera de la barra. `depthEffect` suma la dirección radial a la normal (lente abombada) y `dispersion` cruza
+ * los canales rojo y azul en las diagonales, como en la app de referencia.
  */
 private const val RefractionAgsl = """
 uniform shader content;
@@ -226,6 +226,7 @@ uniform float4 radii;
 uniform float band;
 uniform float amount;
 uniform float dispersion;
+uniform float depthEffect;
 
 float cornerFor(float2 p) {
     if (p.x < 0.0) return p.y < 0.0 ? radii.x : radii.w;
@@ -238,12 +239,18 @@ float shapeDistance(float2 p) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+/** Perfil circular del canto: 1 en el filo y 0 en el límite interior de la franja. */
+float circleMap(float x) {
+    return 1.0 - sqrt(max(1.0 - x * x, 0.0));
+}
+
 half4 main(float2 coord) {
     float2 p = coord - pad - size * 0.5;
     float d = shapeDistance(p);
     if (d > 0.0 || -d >= band) return content.eval(coord);
     float t = 1.0 - (-d / band);
-    float bend = (1.0 - sqrt(max(1.0 - t * t, 0.0))) * amount;
+    float bend = circleMap(t) * amount;
+    // Normal analítica del borde redondeado (hacia fuera).
     float e = 0.75;
     float2 n = float2(
         shapeDistance(p + float2(e, 0.0)) - shapeDistance(p - float2(e, 0.0)),
@@ -251,22 +258,20 @@ half4 main(float2 coord) {
     );
     float len = length(n);
     n = len > 0.0001 ? n / len : float2(0.0);
-    float2 refracted = coord + n * bend;
+    if (depthEffect > 0.5) {
+        float2 radial = length(p) > 0.0001 ? normalize(p) : float2(0.0);
+        n = normalize(n + radial);
+    }
+    // Muestrea HACIA DENTRO: el filo enseña el contenido que hay bajo el cristal, no el de fuera.
+    float2 refracted = coord - n * bend;
     if (dispersion <= 0.0) return content.eval(refracted);
-    // Espectro: cinco muestras repartidas a lo largo de la normal. La separación crece hacia las
-    // diagonales y cambia de signo por cuadrante (n.x·n.y), así rojo y azul se cruzan en cada esquina.
-    float2 spread = n * bend * dispersion * clamp(2.0 * n.x * n.y, -1.0, 1.0);
-    half4 c0 = content.eval(refracted + spread);
-    half4 c1 = content.eval(refracted + spread * 0.5);
-    half4 c2 = content.eval(refracted);
-    half4 c3 = content.eval(refracted - spread * 0.5);
-    half4 c4 = content.eval(refracted - spread);
-    return half4(
-        c0.r * 0.5 + c1.r * 0.5,
-        c1.g * 0.3 + c2.g * 0.4 + c3.g * 0.3,
-        c3.b * 0.5 + c4.b * 0.5,
-        c2.a
-    );
+    // Aberración como en Convx: nula en los ejes y máxima en las diagonales; rojo y azul se cruzan.
+    float intensity = dispersion * (p.x * p.y) / max((size.x * 0.5) * (size.y * 0.5), 0.0001);
+    float2 spread = n * bend * intensity;
+    half4 cR = content.eval(refracted - spread);
+    half4 cG = content.eval(refracted);
+    half4 cB = content.eval(refracted + spread);
+    return half4(cR.r, cG.g, cB.b, cG.a);
 }
 """
 

@@ -9,3 +9,5 @@ captures/
 *.jks
 *.keystore
 /sample/
+
+/LiquidBar-demo.apk

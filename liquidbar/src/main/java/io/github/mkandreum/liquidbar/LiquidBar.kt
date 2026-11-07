@@ -125,13 +125,13 @@ object LiquidBarDefaults {
     fun darkColors(
         accent: Color = Color(0xFF0A84FF),
         content: Color = Color.White.copy(alpha = 0.82f),
-        indicator: Color = Color.White.copy(alpha = 0.10f),
+        indicator: Color = Color(0xFF808080).copy(alpha = 0.55f),
     ) = LiquidBarColors(accent, content, indicator)
 
     fun lightColors(
         accent: Color = Color(0xFF007AFF),
         content: Color = Color(0xFF1C1C1E).copy(alpha = 0.82f),
-        indicator: Color = Color.Black.copy(alpha = 0.10f),
+        indicator: Color = Color(0xFF4A4A4A).copy(alpha = 0.30f),
     ) = LiquidBarColors(accent, content, indicator)
 }
 
@@ -522,13 +522,14 @@ private fun LiquidTabGroup(
                 .glassSurface(lensSources, CircleShape) {
                     val p = drag.pressProgress.coerceIn(0f, 1f)
                     GlassLook(
-                        blur = 8.dp.toPx() * (1f - p),
+                        blur = 12.dp.toPx() * (1f - p),
                         saturation = 1.5f,
                         refractionHeight = 10.dp.toPx() * p,
                         refractionAmount = 14.dp.toPx() * p,
-                        dispersion = 1f,
+                        dispersion = 0.5f,
+                        depthEffect = true,
                         surface = colors.indicator.copy(alpha = colors.indicator.alpha * (1f - p)).compositeOverOrSelf(Color.Black.copy(alpha = 0.03f * p)),
-                        rim = Color.White.copy(alpha = 0.5f * p),
+                        rim = Color.White.copy(alpha = 0.16f + 0.34f * p),
                         rimWidth = 0.5.dp.toPx(),
                         shadowAlpha = p,
                         innerShadowAlpha = p,
@@ -548,7 +549,8 @@ private fun LiquidTabGroup(
                     GlassLook(
                         refractionHeight = 10.dp.toPx() * p,
                         refractionAmount = 14.dp.toPx() * p,
-                        dispersion = 1f,
+                        dispersion = 0.5f,
+                        depthEffect = true,
                         fallback = Color.Transparent,
                     )
                 }

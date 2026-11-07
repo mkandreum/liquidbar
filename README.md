@@ -2,7 +2,7 @@
 
 Barras inferiores de **cristal líquido** para Jetpack Compose, 100 % nativas (Kotlin + `RenderEffect` + shaders AGSL), sin dependencias más allá de Compose.
 
-> **¿Tienes una barra normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final.
+> **¿Tienes una barra normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final. Para migrar cualquier píldora conservando el diseño de cada app (y dejar `+`/buscar a la derecha), usa [docs/MIGRAR.md](docs/MIGRAR.md).
 
 ## Estilos
 
@@ -21,7 +21,7 @@ Píldora de 64 dp con pestañas de icono; la activa se expande en cápsula con s
 
 ## Cristal
 
-`Modifier.liquidGlass(backdrop, shape, style)` sirve para cualquier superficie redondeada (botones, avisos, menús). `LiquidGlassStyle` fija la física: desenfoque 3 dp, saturación ×2, canto refractado de 28,8 dp hasta 33 dp, tinte, filo de luz y contorno oscuro. Hay `LiquidGlassStyle.Dark` y `.Light`.
+`Modifier.liquidGlass(backdrop, shape, style)` sirve para cualquier superficie redondeada (botones, avisos, menús). `LiquidGlassStyle` fija la física (la de Convx): desenfoque 4 dp, saturación ×1,5, canto que refracta 24 dp hacia dentro, tinte, filo de luz y contorno oscuro. Hay `LiquidGlassStyle.Dark` y `.Light`.
 
 Debajo, el paquete `glass` es un motor propio:
 

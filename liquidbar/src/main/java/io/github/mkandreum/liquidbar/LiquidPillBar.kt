@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -254,6 +255,8 @@ fun LiquidPillBar(
         Box(
             Modifier.clearAndSetSemantics {}.alpha(0f).glassSource(tabsBackdrop)
                 .graphicsLayer { val s = lerp(1f, 1.12f, press.value); scaleX = s; scaleY = s; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(x.value / size.width.coerceAtLeast(1f), 0.5f) }
+                // Pulsada, la copia se tiñe como en Convx; en reposo el icono/etiqueta ya van sobre el acento.
+                .graphicsLayer { colorFilter = if (press.value > 0.01f) ColorFilter.tint(colors.accent) else null }
         ) { tabRow(false) }
 
         if (measured && selectedIndex in items.indices) {
@@ -281,11 +284,12 @@ fun LiquidPillBar(
                 place.then(lens).glassSurface(sources, CircleShape) {
                     val p = press.value.coerceIn(0f, 1f)
                     GlassLook(
-                        blur = 6.dp.toPx() * (1f - p),
+                        blur = 3.dp.toPx() * (1f - p),
                         saturation = 1.6f,
                         refractionHeight = 10.dp.toPx() * p,
                         refractionAmount = 14.dp.toPx() * p,
-                        dispersion = 1f,
+                        dispersion = 0.5f,
+                        depthEffect = true,
                         surface = colors.accent.copy(alpha = colors.accent.alpha * (1f - 0.82f * p)),
                         rim = Color.White.copy(alpha = 0.18f + 0.32f * p),
                         rimWidth = 0.8.dp.toPx(),
@@ -303,7 +307,8 @@ fun LiquidPillBar(
                     GlassLook(
                         refractionHeight = 10.dp.toPx() * p,
                         refractionAmount = 14.dp.toPx() * p,
-                        dispersion = 1f,
+                        dispersion = 0.5f,
+                        depthEffect = true,
                         fallback = Color.Transparent,
                     )
                 }

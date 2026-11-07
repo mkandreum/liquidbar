@@ -2,7 +2,7 @@
 
 Esta guía convierte una barra inferior Compose «normal» (fondo sólido, borde, sombra) en una barra de cristal líquido con `liquidbar`, conservando su forma y su forma de responder. Es el mismo proceso que se siguió en **ZaveBill 3.5**, que se usa como ejemplo real en cada paso.
 
-La lupa, los muelles y las animaciones están explicados a fondo en la [sección 9](#9-lupa-animaciones-y-muelles).
+La lupa, los muelles y las animaciones están explicados a fondo en la [sección 9](#9-lupa-animaciones-y-muelles). Para migrar una píldora propia conservando su diseño y dejar `+`/buscar a la derecha, usa [MIGRAR.md](MIGRAR.md).
 
 Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden.
 
@@ -163,7 +163,7 @@ Comportamiento que se obtiene sin escribir nada más (detalle, valores y cómo a
 
 ## 5. Ajustar el cristal a la paleta
 
-`LiquidGlassStyle.Dark` reproduce el cristal oscuro de iOS 26: tinte `#171717` al 50 %, desenfoque de 3 dp, saturación ×2, canto de 28,8 dp que refracta hasta 33 dp, filo `#E8E8E8` al 18 % y contorno oscuro al 19 %. Para una app con color propio, cambia solo el tinte:
+`LiquidGlassStyle.Dark` reproduce el cristal de Convx: tinte `#121212` al 40 %, desenfoque de 4 dp, saturación ×1,5, canto de 24 dp que refracta 24 dp **hacia dentro**, filo `#E8E8E8` al 18 % y contorno oscuro al 19 %. Para una app con color propio, cambia solo el tinte:
 
 ```kotlin
 /** Cristal de ZaveBill: el de la barra de pestañas, con el velo teñido de tinta vino. */
@@ -279,9 +279,9 @@ La lente son **dos capas de cristal apiladas en el mismo sitio**, más un truco:
 **El shader de refracción** (`glass/GlassSurface.kt`, AGSL, Android 13+):
 - calcula la distancia firmada al borde de la forma redondeada;
 - fuera de la franja del canto (`refractionHeight`) el fondo pasa tal cual;
-- dentro, muestrea más hacia fuera siguiendo la normal del borde, con un perfil circular `(1 − √(1 − t²)) × refractionAmount`, como el canto pulido de un vidrio: casi nada al empezar la franja y el máximo en el filo;
+- dentro, muestrea **hacia dentro** siguiendo la normal del borde, con un perfil circular `(1 − √(1 − t²)) × refractionAmount`, como el canto pulido de un vidrio: casi nada al empezar la franja y el máximo en el filo; así el filo aumenta lo que hay debajo y no arrastra el contenido de fuera;
 - **aberración cromática** (`dispersion = 1`): cinco muestras repartidas a lo largo de la normal (rojo, amarillo, verde, cian, azul). La separación crece hacia las diagonales y cambia de signo por cuadrante (`n.x · n.y`), así rojo y azul se cruzan en cada esquina, como en iOS.
-- la franja y el desvío se recortan a una fracción del lado corto de la superficie (16 % y 20 %): en una píldora de 64 dp una franja absoluta de 28,8 dp se comía el centro y arrastraba el texto de fuera como un fantasma; en tarjetas grandes se mantienen los valores del estilo.
+- la franja muestrea **hacia dentro** de la forma (como la lente de Convx/Kyant): el filo enseña el contenido que hay bajo el cristal y nunca arrastra el texto de fuera de la barra; `depthEffect` suma la dirección radial a la normal y `dispersion` cruza rojo y azul en las diagonales.
 
 **Presión `p` (0 → 1).** Todo lo que cambia al pulsar se interpola con `p`:
 
