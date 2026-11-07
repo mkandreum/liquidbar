@@ -186,11 +186,15 @@ private class GlassNode(
     private fun DrawScope.refraction(l: GlassLook, pad: Float): RenderEffect {
         val s = (shader as? RuntimeShader) ?: RuntimeShader(RefractionAgsl).also { shader = it }
         val r = cornerRadii()
+        // El canto se limita a una fracción del lado corto: en superficies pequeñas (una píldora de 48 dp)
+        // una franja absoluta de 28,8 dp se come el centro y arrastra el contenido de fuera como un fantasma.
+        val band = l.refractionHeight.coerceAtMost(size.minDimension * 0.16f)
+        val amount = l.refractionAmount.coerceAtMost(size.minDimension * 0.20f)
         s.setFloatUniform("size", size.width, size.height)
         s.setFloatUniform("pad", pad)
         s.setFloatUniform("radii", r[0], r[1], r[2], r[3])
-        s.setFloatUniform("band", l.refractionHeight)
-        s.setFloatUniform("amount", l.refractionAmount)
+        s.setFloatUniform("band", band)
+        s.setFloatUniform("amount", amount)
         s.setFloatUniform("dispersion", l.dispersion)
         return RenderEffect.createRuntimeShaderEffect(s, "content")
     }

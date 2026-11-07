@@ -281,6 +281,7 @@ La lente son **dos capas de cristal apiladas en el mismo sitio**, más un truco:
 - fuera de la franja del canto (`refractionHeight`) el fondo pasa tal cual;
 - dentro, muestrea más hacia fuera siguiendo la normal del borde, con un perfil circular `(1 − √(1 − t²)) × refractionAmount`, como el canto pulido de un vidrio: casi nada al empezar la franja y el máximo en el filo;
 - **aberración cromática** (`dispersion = 1`): cinco muestras repartidas a lo largo de la normal (rojo, amarillo, verde, cian, azul). La separación crece hacia las diagonales y cambia de signo por cuadrante (`n.x · n.y`), así rojo y azul se cruzan en cada esquina, como en iOS.
+- la franja y el desvío se recortan a una fracción del lado corto de la superficie (16 % y 20 %): en una píldora de 64 dp una franja absoluta de 28,8 dp se comía el centro y arrastraba el texto de fuera como un fantasma; en tarjetas grandes se mantienen los valores del estilo.
 
 **Presión `p` (0 → 1).** Todo lo que cambia al pulsar se interpola con `p`:
 
