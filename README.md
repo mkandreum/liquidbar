@@ -2,6 +2,8 @@
 
 Barras inferiores de **cristal líquido** para Jetpack Compose, 100 % nativas (Kotlin + `RenderEffect` + shaders AGSL), sin dependencias más allá de Compose.
 
+> **¿Tienes una barra normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final.
+
 ## Estilos
 
 ### `LiquidBar` — cápsula con plegado
