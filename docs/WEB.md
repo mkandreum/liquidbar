@@ -10,7 +10,7 @@ Versión web de `LiquidBar` (la cápsula con plegado): **misma lupa, mismos muel
 
 Primer uso real: **JAMD2.0** (`mkandreum/JAMD2.0`, carpeta `liquidbar/`). GastroOS tiene una versión React anterior y aproximada (`src/components/LiquidBar.tsx`): para webs nuevas usa esta.
 
-> Instrucciones para un asistente: si en un proyecto **web** se pide «aplica liquidbar», «pon la barra de cristal» o similar, sigue esta guía en orden, sin preguntar otra vez lo que ya está decidido aquí. Para Android/Compose sigue [PORTAR.md](PORTAR.md).
+> Instrucciones para un asistente: si en un proyecto **web** se pide «aplica liquidbar», «pon la barra de cristal» o similar, sigue esta guía en orden, sin preguntar otra vez lo que ya está decidido aquí. Para Android/Compose sigue [PORTAR.md](PORTAR.md). Si se pide **actualizar** la barra de las webs (o se ha cambiado `web/`), sigue el [apartado 7](#7-actualizar-las-webs-ya-desplegadas) con todas las webs de su tabla.
 
 ---
 
@@ -21,7 +21,7 @@ mkdir -p liquidbar
 cp ~/Descargas/liquidbar/web/liquidbar.js ~/Descargas/liquidbar/web/liquidbar.css liquidbar/
 ```
 
-(o `git clone https://github.com/mkandreum/liquidbar` y copiar desde `web/`). No se edita en el proyecto: los ajustes se hacen **en el repo `liquidbar`** y se vuelven a copiar, para que todas las webs se comporten igual.
+(o `git clone https://github.com/mkandreum/liquidbar` y copiar desde `web/`). No se edita en el proyecto: los ajustes se hacen **en el repo `liquidbar`** y se vuelven a copiar, para que todas las webs se comporten igual. Al terminar, **apunta la web en la tabla del [apartado 7](#7-actualizar-las-webs-ya-desplegadas)** para que reciba los arreglos.
 
 Comprueba que el servidor la sirve:
 - servidor Node propio: que sirva estáticos de esa carpeta; si hay `Dockerfile` que copia archivos sueltos, añade `COPY liquidbar ./liquidbar` (en JAMD hizo falta);
@@ -142,7 +142,48 @@ Ajustes: los mismos de [PORTAR.md §9.4](PORTAR.md#94-cómo-ajustarlo), en `liqu
 | La lente vuelve a pestañas intermedias al tocar una lejana | el scroll-spy se adelanta | bloqueo del apartado «Webs de una sola página» |
 | Animaciones a saltos en la vista móvil del panel de Claude | el panel limita los fotogramas al emular móvil | probar a tamaño normal o en un móvil real |
 
-## 7. Comprobación final
+## 7. Actualizar las webs ya desplegadas
+
+Cada web lleva **su propia copia** de `liquidbar.js` y `liquidbar.css`. Un arreglo en este repo no llega solo a las webs: hay que volver a copiar y desplegar cada una. Siempre se copian **los dos archivos** a la vez y sin editarlos.
+
+### Webs que usan la versión web
+
+| Web | Repo | Carpeta de la librería | Versión |
+|---|---|---|---|
+| JAMD Desarrollos IA | `mkandreum/JAMD2.0` | `liquidbar/` | 1.0.1 |
+
+Cada vez que apliques liquidbar web en una web nueva, **añádela a esta tabla**; cada vez que la actualices, cambia su versión.
+GastroOS **no** está en la lista: lleva la versión React antigua (`src/components/LiquidBar.tsx`), con su propio motor, y no le afectan estos arreglos. Si se migra a esta librería, entra en la tabla.
+
+### Qué versión lleva una web
+
+```bash
+head -2 liquidbar/liquidbar.js            # «LiquidBar web v1.0.1 — …»
+```
+
+En el navegador, en la web desplegada: `LiquidBar.version` en la consola.
+
+### Cómo actualizar
+
+```bash
+cd ~/Descargas/liquidbar && git pull
+cd <repo de la web>
+cp ~/Descargas/liquidbar/web/liquidbar.js ~/Descargas/liquidbar/web/liquidbar.css liquidbar/
+git add liquidbar && git commit -m "liquidbar web vX.Y.Z" && git push   # Coolify despliega desde main
+```
+
+Después, en la web desplegada: recarga forzada (o vacía la caché), comprueba que `LiquidBar.version` dice la versión nueva y repasa la comprobación final (apartado 8). Si la web sirve los archivos con caché larga, añade `?v=X.Y.Z` a las rutas de `liquidbar.css` y `liquidbar.js` en el HTML.
+
+### Historial de versiones
+
+| Versión | Qué cambia | ¿Hay que actualizar las webs? |
+|---|---|---|
+| 1.0.1 | **Arreglo:** al arrastrar la lente la web iba cada vez más lenta hasta congelarse. El reloj de animación programaba un fotograma de más cuando algo se animaba dentro del propio fotograma, y se duplicaban sin parar (unos 3 fps → 60 fps) | **Sí, todas** |
+| 1.0.0 | Primera versión web (JAMD2.0) | — |
+
+Al cambiar la librería: sube `version` (al final de `liquidbar.js`) y la línea 2 de la cabecera, añade una fila aquí y actualiza las webs de la tabla de arriba.
+
+## 8. Comprobación final
 
 1. Consola sin errores; `LiquidBar.support` da `{blur: true, refraction: true}` en Chrome.
 2. En Chrome (escritorio y Android):
