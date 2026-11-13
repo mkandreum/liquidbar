@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiquidBar web · píldora</title>
+<link rel="stylesheet" href="liquidbar.css">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0a0a0a; color: #f2f2f7; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { padding: 24px 16px 140px; max-width: 720px; margin: 0 auto; }
+  .card { height: 180px; border-radius: 28px; margin: 16px 0; }
+  .c1 { background: linear-gradient(135deg, #ff5a36, #ffb800); }
+  .c2 { background: linear-gradient(135deg, #2f5bff, #6fb1ff); }
+  .c3 { background: repeating-linear-gradient(45deg, #fff 0 14px, #111 14px 28px); }
+  .dock { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: flex; justify-content: center; z-index: 10; pointer-events: none; }
+  .dock > nav { pointer-events: auto; }
+  .rail { position: fixed; left: 24px; top: 50%; transform: translateY(-50%); z-index: 10; }
+  #estado { position: fixed; top: 12px; right: 12px; font: 12px/1.3 ui-monospace, monospace; background: #0008; padding: 6px 10px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div id="estado"></div>
+<main>
+  <h1>Píldora</h1>
+  <p>Toca otra pestaña para ver viajar la cápsula. Mantén pulsada la cápsula y arrástrala: se vuelve lupa.</p>
+  <div class="card c1"></div><div class="card c3"></div><div class="card c2"></div><div class="card c1"></div>
+</main>
+<div class="dock"><nav id="barra" aria-label="Navegación"></nav></div>
+<div class="rail"><nav id="riel" aria-label="Navegación lateral"></nav></div>
+<script src="liquidbar.js"></script>
+<script>
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const pill = LiquidBar.createPill(document.getElementById('barra'), {
+    items: [
+      { label: 'Inicio', icon: svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>') },
+      { label: 'Clientes', icon: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.2-5 6.5-5s5.9 1.6 6.5 5"/><circle cx="17" cy="9" r="2.5"/>') },
+      { label: 'Chat', icon: svg('<path d="M4 5h16v11H8l-4 4z"/>') },
+      { label: 'Perfil', icon: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>') },
+    ],
+    selectedIndex: 0,
+    onSelect: (i) => { document.getElementById('estado').textContent = `onSelect(${i})`; },
+    colors: { accent: '#FF8A3D', onAccent: '#0A0A0A', content: '#8A8A8A' },
+    glass: { blur: 9, saturation: 1.65, refractionHeight: 26, refractionAmount: 30, surface: 'rgba(20,20,20,.42)', rim: 'rgba(255,255,255,.22)', darkRimAlpha: 0.24, fallback: 'rgba(20,20,20,.9)' },
+  });
+  window.pill = pill;
+  // Riel vertical (escritorio): mismas pestañas, solo iconos.
+  window.rail = LiquidBar.createPill(document.getElementById('riel'), {
+    items: pill.items.map((it) => ({ label: it.label, icon: it.icon })), selectedIndex: 0, vertical: true,
+    onSelect: (i) => { document.getElementById('estado').textContent = `riel onSelect(${i})`; },
+    colors: { accent: '#FF8A3D', onAccent: '#0A0A0A', content: '#8A8A8A' },
+  });
+  document.getElementById('estado').textContent = `v${LiquidBar.version} · refracción: ${LiquidBar.support.refraction ? 'sí' : 'no'}`;
+</script>
+</body>
+</html>

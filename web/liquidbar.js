@@ -1,5 +1,5 @@
 /*!
- * LiquidBar web v1.0.1 — port 1:1 de la barra de cristal líquido de github.com/mkandreum/liquidbar
+ * LiquidBar web v1.1.0 — port 1:1 de la barra de cristal líquido de github.com/mkandreum/liquidbar
  * (Jetpack Compose) a JavaScript sin dependencias.
  *
  * Mismos valores que la versión nativa (LiquidBar.kt, glass/Touch.kt, LiquidMotion.kt, GlassSurface.kt):
@@ -28,6 +28,14 @@
  *   });
  *   bar.setSelected(2);                      // cambio programático (scroll-spy, rutas…)
  *   bar.fold(); bar.unfold(); bar.destroy();
+ *
+ *   // Píldora fina (LiquidPillBar): pestañas de icono, la activa se expande con su etiqueta y es la lente.
+ *   const pill = LiquidBar.createPill(document.querySelector('#barra'), {
+ *     items, selectedIndex: 0, onSelect: i => …,
+ *     colors: { accent: '#27F58B', onAccent: '#0A0A0A', content: '#8A8A8A' },
+ *   });
+ *   pill.setSelected(1); pill.setLabel(3, 'Chat · 2'); pill.setColors({ accent: '#FF8A3D' });
+ *   // Riel lateral (escritorio): LiquidBar.createPill(el, { …, vertical: true }) — solo iconos, lente en vertical.
  */
 (function (root, factory) {
   const api = factory();
@@ -1188,6 +1196,409 @@
     }
   }
 
+  /* ───────────────────────── Píldora (LiquidPillBar) ───────────────────────── */
+
+  /** Medidas de LiquidPillDefaults: pestaña de 48, relleno de 12, icono de 24, etiqueta a 7 del icono. */
+  const PILL = { tabH: 48, pad: 8, gap: 2, padX: 12, minPadX: 4, icon: 24, labelGap: 7 };
+  const S_TRAVEL = spring(0.62, 420);   // viaje de la lente entre pestañas (se pasa un poco y vuelve)
+  const S_STRETCH = spring(0.5, 420);   // anchura de la lente
+  const S_EXPAND = spring(0.75, 500);   // expandHorizontally de la etiqueta
+  const S_SHRINK = spring(0.9, 500);    // shrinkHorizontally
+  const S_FADE = spring(1, 400);        // fadeIn/fadeOut por defecto de Compose
+  const S_TINT = spring(1, 1500);       // animateColorAsState por defecto
+  const S_POP = spring(0.35, 1500);     // «pop» del icono al activarse
+  const S_SQUEEZE = spring(0.6, 800);   // pestaña pulsada a 0,95
+
+  /**
+   * Barra fina en píldora, port de `LiquidPillBar`: pestañas de icono; la activa se expande en cápsula de
+   * acento con su etiqueta. La cápsula es una lente: viaja entre pestañas con un muelle que se pasa un poco y
+   * se estira con la velocidad; mantenida pulsada crece ×1,18/×1,3, se aclara a cristal y refracta (con
+   * aberración cromática) el fondo y una copia teñida y ampliada ×1,12 de las pestañas; se arrastra y al
+   * soltar se asienta en la más cercana. La barra se ajusta a su contenido.
+   *
+   * Extras de la web: `vertical: true` (riel lateral de escritorio: solo iconos, la lente viaja en vertical) y
+   * `maxWidth` (si no cabe, estrecha el relleno de las pestañas hasta 4 px antes de salirse).
+   */
+  class Pill {
+    constructor(host, options) {
+      if (!host) throw new Error('LiquidBar: falta el elemento contenedor');
+      const o = (this.o = Object.assign({ items: [], selectedIndex: 0, onSelect: null, ariaLabel: null, vertical: false, maxWidth: 0 }, options || {}));
+      this.host = host;
+      this.vert = !!o.vertical;
+      this.items = o.items.map((it) => Object.assign({}, it));
+      this.n = this.items.length;
+      this.selected = clamp(o.selectedIndex | 0, 0, Math.max(0, this.n - 1));
+      this.setColors(o.colors);
+      o.glass = Object.assign({}, GlassStyle.Dark, o.glass || {});
+
+      this.natural = this.items.map(() => 0);      // anchura natural de cada etiqueta (px)
+      this.lefts = this.items.map(() => 0);        // posición de cada pestaña a lo largo del eje
+      this.widths = this.items.map(() => 0);       // longitud de cada pestaña a lo largo del eje
+      this.padX = PILL.padX;
+      const on = (i) => (i === this.selected && !this.vert ? 1 : 0);
+      this.expand = this.items.map((_, i) => new Anim(on(i)));
+      this.fade = this.items.map((_, i) => new Anim(on(i)));
+      this.tint = this.items.map((_, i) => new Anim(i === this.selected ? 1 : 0));
+      this.pop = this.items.map(() => new Anim(1));
+      this.squeeze = this.items.map(() => new Anim(1));
+
+      // La lente: centro y longitud (px, a lo largo del eje, en coordenadas de la fila) y presión.
+      this.x = new Anim(0, 0.5);
+      this.w = new Anim(0, 0.5);
+      this.press = new Anim(0);
+      this.holding = false;
+      this.dragging = false;
+      this.released = -1;          // pestaña donde se soltó, hasta que la app confirma (o 400 ms)
+      this.releasedTimer = 0;
+      this.measured = false;
+      this.glow = new Glow();
+
+      this._build();
+      this._measure();
+      this._frame = () => this._tick();
+      frameHooks.add(this._frame);
+      if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) document.fonts.ready.then(() => { this._measure(); kick(); });
+      kick();
+    }
+
+    setColors(c) {
+      const o = this.o;
+      o.colors = Object.assign({ accent: '#0A84FF', onAccent: '#FFFFFF', content: 'rgba(255,255,255,0.72)' }, o.colors || {}, c || {});
+      this.cAccent = parseColor(o.colors.accent);
+      this.cOn = parseColor(o.colors.onAccent);
+      this.cContent = parseColor(o.colors.content);
+      kick();
+    }
+
+    /** Anchura máxima disponible (px): si la barra no cabe, se compactan las pestañas. */
+    setMaxWidth(px) { this.o.maxWidth = px || 0; kick(); }
+
+    _build() {
+      const o = this.o, host = this.host;
+      host.classList.add('lbw', 'lbp');
+      if (this.vert) host.classList.add('lbp-v');
+      host.textContent = '';
+      if (o.ariaLabel) host.setAttribute('aria-label', o.ariaLabel);
+      const div = (cls, parent) => { const d = document.createElement('div'); d.className = cls; if (parent) parent.appendChild(d); return d; };
+
+      this.filter = support.refraction ? new RimFilter(o.glass.refractionHeight, o.glass.refractionAmount) : null;
+      this.lensFilter = support.refraction ? new LensFilter() : null;
+
+      // El cristal de la píldora, sin hijos con contenido: la lente lo «ve» a través de su backdrop-filter.
+      this.surface = div('lbw-glass lbp-surface', host);
+      this.surfaceGlow = div('lbw-glow', this.surface);
+      paintGlass(this.surface, o.glass, this.filter);
+
+      this.row = div('lbp-row', host);
+      const makeTab = (item, i, interactive) => {
+        const tab = document.createElement(interactive ? (item.href ? 'a' : 'button') : 'span');
+        tab.className = 'lbp-tab';
+        if (interactive) {
+          if (item.href) tab.href = item.href; else tab.type = 'button';
+          tab.setAttribute('aria-label', item.label);
+          if (this.vert) tab.title = item.label;
+        }
+        const ico = iconNode(item.icon);
+        ico.className = 'lbp-ico';
+        const wrap = document.createElement('span');
+        wrap.className = 'lbp-labw';
+        const lab = document.createElement('span');
+        lab.className = 'lbp-lab';
+        lab.textContent = item.label;
+        wrap.appendChild(lab);
+        tab.append(ico, wrap);
+        return { tab, ico, wrap, lab };
+      };
+      this.tabs = this.items.map((item, i) => {
+        const t = makeTab(item, i, true);
+        t.tab.addEventListener('click', (e) => { if (!item.href) e.preventDefault(); if (i !== this.selected) this._emit(i); });
+        t.tab.addEventListener('pointerdown', () => this.squeeze[i].animateTo(0.95, S_SQUEEZE));
+        const up = () => this.squeeze[i].animateTo(1, S_SQUEEZE);
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => t.tab.addEventListener(ev, up));
+        this.row.appendChild(t.tab);
+        return t;
+      });
+
+      // La lente: hermana de la píldora para que su backdrop-filter vea la página y el cristal de la píldora.
+      this.lens = div('lbw-lens lbp-lens', host);
+      this.lens.setAttribute('aria-hidden', 'true');
+      this.lensContent = div('lbw-lens-c', this.lens);
+      this.clone = div('lbp-clone', this.lensContent);
+      this.cloneTabs = this.items.map((item, i) => { const t = makeTab(item, i, false); this.clone.appendChild(t.tab); return t; });
+      // Zona táctil de la lente: el hueco de su pestaña, no el dibujo ampliado (como en nativo).
+      this.hit = div('lbp-hit', host);
+      this.hit.setAttribute('aria-hidden', 'true');
+
+      // Medidor de etiquetas con los mismos estilos (hereda la tipografía que la web ponga a .lbp-lab).
+      this.meter = document.createElement('span');
+      this.meter.className = 'lbp-lab lbp-meter';
+      host.appendChild(this.meter);
+
+      this.glow.bind(host);
+      this._bindLens();
+      this._syncA11y();
+    }
+
+    _measure() {
+      if (this.vert) return;
+      this.items.forEach((it, i) => {
+        this.meter.textContent = it.label;
+        this.natural[i] = this.meter.getBoundingClientRect().width;
+      });
+      this.meter.textContent = '';
+    }
+
+    _bindLens() {
+      const lens = this.hit, vert = this.vert;
+      let id = null;
+      let last = 0;
+      const coord = (e) => (vert ? e.clientY : e.clientX);
+      const end = (e) => {
+        if (e.pointerId !== id) return;
+        id = null;
+        // Siempre se suelta (también si el gesto se cancela): una lente «arrastrándose» no volvería a su sitio.
+        this.dragging = false;
+        kick();
+        // Cancelado (otro elemento se queda el dedo, scroll del sistema…): sin selección, vuelve a su pestaña.
+        if (e.type !== 'pointerup') return;
+        const target = this._nearest(this.x.value);
+        this.released = target;
+        clearTimeout(this.releasedTimer);
+        this.releasedTimer = setTimeout(() => { this.released = -1; kick(); }, 400);
+        // Siempre avisa, también al soltar sobre la pestaña activa (como la nativa).
+        this._emit(target, true);
+      };
+      lens.addEventListener('pointerdown', (e) => {
+        if (id !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        e.preventDefault();
+        id = e.pointerId;
+        last = coord(e);
+        try { lens.setPointerCapture(id); } catch (_) { /* sin captura */ }
+        this.dragging = true;
+        kick();
+      });
+      lens.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== id) return;
+        const c = coord(e), d = c - last;
+        last = c;
+        if (!d) return;
+        const min = this.lefts[0] || 0;
+        const max = (this.lefts[this.n - 1] || 0) + (this.widths[this.n - 1] || 0);
+        this.x.snapTo(clamp(this.x.value + d, min, max));
+        const h = this._nearest(this.x.value);
+        if (this.w.target !== this.widths[h]) this.w.animateTo(this.widths[h], S_STRETCH);
+      });
+      lens.addEventListener('pointerup', end);
+      lens.addEventListener('pointercancel', end);
+      lens.addEventListener('lostpointercapture', end);
+      lens.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    _nearest(c) {
+      let best = 0, bd = Infinity;
+      for (let i = 0; i < this.n; i++) {
+        const d = Math.abs(this.lefts[i] + this.widths[i] / 2 - c);
+        if (d < bd) { bd = d; best = i; }
+      }
+      return best;
+    }
+
+    /** El usuario elige (toque o lente). `always`: avisar aunque sea la activa. */
+    _emit(i, always) {
+      const changed = i !== this.selected;
+      this._setSelected(i);
+      if ((changed || always) && typeof this.o.onSelect === 'function') this.o.onSelect(i, this.items[i]);
+    }
+
+    _setSelected(i) {
+      i = clamp(i | 0, 0, Math.max(0, this.n - 1));
+      if (i === this.selected) return;
+      const prev = this.selected;
+      this.selected = i;
+      this.released = -1;
+      if (!this.vert) {
+        this.expand[prev].animateTo(0, S_SHRINK);
+        this.fade[prev].animateTo(0, S_FADE);
+        this.expand[i].animateTo(1, S_EXPAND);
+        this.fade[i].animateTo(1, S_FADE);
+      }
+      this.tint[prev].animateTo(0, S_TINT);
+      this.tint[i].animateTo(1, S_TINT);
+      this.pop[i].snapTo(0.6).then(() => this.pop[i].animateTo(1, S_POP));
+      this._syncA11y();
+      kick();
+    }
+
+    /** Cambio programático (rutas, la app confirma…), sin onSelect. */
+    setSelected(i) { this._setSelected(i); }
+    get selectedIndex() { return this.selected; }
+
+    /** Cambia la etiqueta de una pestaña (p. ej. «Chat · 3») sin rehacer la barra. */
+    setLabel(i, label) {
+      const it = this.items[i];
+      if (!it || it.label === label) return;
+      it.label = label;
+      this.tabs[i].lab.textContent = label;
+      this.tabs[i].tab.setAttribute('aria-label', label);
+      if (this.vert) this.tabs[i].tab.title = label;
+      this.cloneTabs[i].lab.textContent = label;
+      this._measure();
+      kick();
+    }
+
+    _syncA11y() {
+      this.tabs.forEach((t, i) => {
+        if (i === this.selected) t.tab.setAttribute('aria-current', 'page');
+        else t.tab.removeAttribute('aria-current');
+      });
+    }
+
+    /** Disposición (la Row/Column de Compose con la etiqueta que se despliega). Devuelve la longitud total. */
+    _layout() {
+      const P = PILL, n = this.n;
+      if (this.vert) {
+        this.padX = P.padX;
+        for (let i = 0; i < n; i++) { this.lefts[i] = i * (P.tabH + P.gap); this.widths[i] = P.tabH; }
+        return n * P.tabH + (n - 1) * P.gap;
+      }
+      const labs = this.items.map((_, i) => (P.labelGap + this.natural[i]) * Math.max(0, this.expand[i].value));
+      const fixed = labs.reduce((a, b) => a + b, 0) + n * P.icon + (n - 1) * P.gap + 2 * P.pad;
+      let padX = P.padX;
+      const max = this.o.maxWidth;
+      if (max > 0 && fixed + 2 * n * padX > max) padX = clamp((max - fixed) / (2 * n), P.minPadX, P.padX);
+      this.padX = padX;
+      let left = 0;
+      for (let i = 0; i < n; i++) {
+        this.lefts[i] = left;
+        this.widths[i] = 2 * padX + P.icon + labs[i];
+        left += this.widths[i] + (i < n - 1 ? P.gap : 0);
+      }
+      return left;
+    }
+
+    /** Un único dueño de la posición de la lente: sin arrastre va SIEMPRE a su pestaña (collectLatest). */
+    _tick() {
+      if (!this.n) return;
+      this._layout();
+      const ti = this.released >= 0 ? this.released : this.selected;
+      const cx = this.lefts[ti] + this.widths[ti] / 2, tw = this.widths[ti];
+      if (!this.dragging && tw > 0) {
+        if (!this.measured) { this.x.snapTo(cx); this.w.snapTo(tw); this.measured = true; }
+        else {
+          if (Math.abs(this.x.target - cx) > 0.25 || (!this.x.isRunning && Math.abs(this.x.value - cx) > 0.25)) this.x.animateTo(cx, S_TRAVEL);
+          if (Math.abs(this.w.target - tw) > 0.25 || (!this.w.isRunning && Math.abs(this.w.value - tw) > 0.25)) this.w.animateTo(tw, S_STRETCH);
+        }
+      }
+      // «Pulsada» mientras se arrastra o mientras viaja lejos de su pestaña; quieta nunca se queda en lupa.
+      const holding = this.dragging || (this.measured && this.x.isRunning && Math.abs(this.x.value - cx) > 8);
+      if (holding !== this.holding) {
+        this.holding = holding;
+        this.press.animateTo(holding ? 1 : 0, holding ? spring(1, 1000) : spring(1, 600));
+      }
+      this.render();
+    }
+
+    render() {
+      const P = PILL, vert = this.vert;
+      const len = this._layout();
+      const along = len + 2 * P.pad, cross = P.tabH + 2 * P.pad;
+      const W = vert ? cross : along, H = vert ? along : cross;
+      const f2 = (v) => `${v.toFixed(2)}px`;
+      put(this.host, 'width', f2(W));
+      put(this.host, 'height', f2(H));
+      put(this.surface, 'width', f2(W));
+      put(this.surface, 'height', f2(H));
+      if (this.filter) this.filter.update(W, H);
+      this.glow.paint(this.surfaceGlow, W, H);
+
+      const p = clamp01(this.press.value);
+      const accent = this.cAccent;
+      const mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t)];
+
+      put(this.row, 'width', f2(W - 2 * P.pad));
+      put(this.row, 'height', f2(H - 2 * P.pad));
+      for (let i = 0; i < this.n; i++) {
+        const t = this.tabs[i], c = this.cloneTabs[i];
+        const labW = vert ? 0 : (P.labelGap + this.natural[i]) * Math.max(0, this.expand[i].value);
+        const color = css(mix(this.cContent, this.cOn, clamp01(this.tint[i].value)));
+        const sq = this.squeeze[i].value, pop = this.pop[i].value;
+        const alpha = clamp01(this.fade[i].value).toFixed(3);
+        for (const [el, clone] of [[t, false], [c, true]]) {
+          put(el.tab, vert ? 'top' : 'left', f2(this.lefts[i]));
+          put(el.tab, vert ? 'height' : 'width', f2(this.widths[i]));
+          put(el.tab, 'paddingLeft', f2(this.padX));
+          put(el.tab, 'paddingRight', f2(this.padX));
+          put(el.wrap, 'width', f2(labW));
+          put(el.wrap, 'opacity', alpha);
+          put(el.ico, 'transform', pop === 1 ? '' : `scale(${pop.toFixed(4)})`);
+          // Pulsada, la copia se tiñe entera de acento; en reposo es igual que la fila de verdad.
+          put(el.tab, 'color', clone && p > 0.01 ? css(accent) : color);
+          if (!clone) put(el.tab, 'transform', sq === 1 ? '' : `scale(${sq.toFixed(4)})`);
+        }
+      }
+
+      if (!this.measured) { put(this.lens, 'display', 'none'); put(this.hit, 'display', 'none'); return; }
+      put(this.hit, 'display', '');
+      // Lente: crece al pulsar y se estira con la velocidad del viaje (larga y fina al acelerar).
+      const v = Math.min(Math.abs(this.x.velocity) / 5000, 0.22);
+      const gAlong = Math.max(1, this.w.value * lerp(1, 1.18, p) * (1 + v));
+      const gCross = Math.max(1, P.tabH * lerp(1, 1.3, p) * (1 - v * 0.45));
+      const gw = vert ? gCross : gAlong, gh = vert ? gAlong : gCross;
+      const lx = vert ? P.pad + (P.tabH - gw) / 2 : P.pad + this.x.value - gw / 2;
+      const ly = vert ? P.pad + this.x.value - gh / 2 : P.pad + (P.tabH - gh) / 2;
+      put(this.lens, 'display', '');
+      put(this.lens, 'width', f2(gw));
+      put(this.lens, 'height', f2(gh));
+      put(this.lens, 'transform', `translate(${f2(lx)},${f2(ly)})`);
+      const hw = vert ? P.tabH : this.w.value, hh = vert ? this.w.value : P.tabH;
+      const hx = vert ? P.pad : P.pad + this.x.value - this.w.value / 2, hy = vert ? P.pad + this.x.value - this.w.value / 2 : P.pad;
+      put(this.hit, 'width', f2(hw));
+      put(this.hit, 'height', f2(hh));
+      put(this.hit, 'transform', `translate(${f2(hx)},${f2(hy)})`);
+
+      // La lente no refracta las pestañas de verdad (en nativo su fondo es la página + el cristal): hueco en la fila.
+      put(this.row, 'clipPath', `path(evenodd, "M-4000 -4000H8000V8000H-4000Z ${roundRectPath(lx - P.pad, ly - P.pad, gw, gh)}")`);
+
+      if (support.blur) {
+        if (this.lensFilter) {
+          const b = Math.max(16, Math.round((this.w.target * 1.18) / 8) * 8); // mapas a la medida de la lente pulsada, por tramos
+          if (vert) this.lensFilter.build(P.tabH * 1.3, b, 10, 0.5, true);
+          else this.lensFilter.build(b, P.tabH * 1.3, 10, 0.5, true);
+          this.lensFilter.update(gw, gh, 14 * p);
+        }
+        const refr = this.lensFilter && p > 0.002;
+        put(this.lens, backdropProp, backdrop(3 * (1 - p), 1.6, refr ? this.lensFilter.id : null));
+        put(this.lens, 'backgroundColor', css(alphaOf(accent, accent[3] * (1 - 0.82 * p))));
+        put(this.lensContent, 'filter', refr ? `url(#${this.lensFilter.id})` : 'none');
+      } else {
+        put(this.lens, 'backgroundColor', css(accent));
+      }
+      const rimA = 0.18 + 0.32 * p;
+      this.lens.style.setProperty('--lbw-rim', `rgba(255,255,255,${rimA.toFixed(3)})`);
+      this.lens.style.setProperty('--lbw-rim-end', `rgba(255,255,255,${(rimA * 0.6).toFixed(3)})`);
+      put(this.lens, 'boxShadow', p > 0.002
+        ? `0 4px ${(2 * sigma(24)).toFixed(1)}px rgba(0,0,0,${(0.1 * p).toFixed(3)}), inset 0 ${(8 * p).toFixed(2)}px ${(2 * sigma(8 * p)).toFixed(2)}px rgba(0,0,0,${(0.15 * p).toFixed(3)})`
+        : 'none');
+
+      // Copia de las pestañas alineada con la fila y ampliada ×1,12 alrededor de la lente al pulsar.
+      const zoom = lerp(1, 1.12, p);
+      put(this.clone, 'width', f2(W - 2 * P.pad));
+      put(this.clone, 'height', f2(H - 2 * P.pad));
+      put(this.clone, 'transformOrigin', vert ? `50% ${f2(this.x.value)}` : `${f2(this.x.value)} 50%`);
+      put(this.clone, 'transform', `translate(${f2(P.pad - lx)},${f2(P.pad - ly)})${zoom === 1 ? '' : ` scale(${zoom.toFixed(4)})`}`);
+    }
+
+    destroy() {
+      frameHooks.delete(this._frame);
+      clearTimeout(this.releasedTimer);
+      [this.filter, this.lensFilter].forEach((f) => f && f.destroy());
+      this.host.textContent = '';
+      this.host.classList.remove('lbw', 'lbp', 'lbp-v');
+      this.host.style.width = '';
+      this.host.style.height = '';
+    }
+  }
+
   /**
    * `Modifier.liquidGlass` para cualquier elemento redondeado que flote sobre el contenido (botones, avisos,
    * menús). Devuelve una función para retirarlo.
@@ -1206,12 +1617,13 @@
 
   return {
     create: (host, options) => new Bar(host, options),
+    createPill: (host, options) => new Pill(host, options),
     liquidGlass,
     GlassStyle,
     Motion,
     support,
     spring,
     springEasing,
-    version: '1.0.1',
+    version: '1.1.0',
   };
 });

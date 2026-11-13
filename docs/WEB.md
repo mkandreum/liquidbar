@@ -1,12 +1,13 @@
 # LiquidBar web: aplicar la barra en una página o app web
 
-Versión web de `LiquidBar` (la cápsula con plegado): **misma lupa, mismos muelles, mismo plegado y mismo cristal** que la librería nativa, en JavaScript sin dependencias. Vive en [`web/`](../web):
+Versión web de `LiquidBar` (la cápsula con plegado) y, desde la 1.1.0, de `LiquidPillBar` (la píldora fina): **misma lupa, mismos muelles, mismo plegado y mismo cristal** que la librería nativa, en JavaScript sin dependencias. Vive en [`web/`](../web):
 
 | Archivo | Qué es |
 |---|---|
 | `web/liquidbar.js` | la barra y el motor (muelles analíticos, lente, refracción con mapas SVG, brillo, estiramiento) |
 | `web/liquidbar.css` | estructura y filos del cristal; todo lo que se anima lo escribe el JS en cada fotograma |
-| `web/demo.html` | demo para probar (`python3 -m http.server --directory web` → `/demo.html`) |
+| `web/demo.html` | demo de la cápsula (`python3 -m http.server --directory web` → `/demo.html`) |
+| `web/demo-pill.html` | demo de la píldora (`/demo-pill.html`) |
 
 Primer uso real: **JAMD2.0** (`mkandreum/JAMD2.0`, carpeta `liquidbar/`). GastroOS tiene una versión React anterior y aproximada (`src/components/LiquidBar.tsx`): para webs nuevas usa esta.
 
@@ -87,6 +88,60 @@ Iconos: SVG en línea con `stroke="currentColor"`/`fill="currentColor"` (el colo
 
 Métodos: `lbar.setSelected(i)` (cambio programático, sin `onSelect`), `lbar.fold()`, `lbar.unfold()`, `lbar.isFolded`, `lbar.selectedIndex`, `lbar.destroy()`.
 
+
+### Píldora (`LiquidPillBar`)
+
+Si la app nativa usa `LiquidPillBar`, en la web se usa `LiquidBar.createPill` para que sean iguales: pestañas de icono; la activa se expande en cápsula de acento con su etiqueta y es la lente (viaja con muelle, se estira con la velocidad, pulsada crece ×1,18/×1,3 y se vuelve lupa con aberración cromática; se arrastra y al soltar se asienta en la más cercana).
+
+```js
+const pill = LiquidBar.createPill(document.getElementById('lbar'), {
+  items: [{ label: 'Inicio', icon: '<svg …>' }, /* … */],
+  selectedIndex: 0,
+  onSelect: (i) => irA(i),                                  // también al soltar la lente sobre la activa
+  colors: { accent: '#27F58B', onAccent: '#0A0A0A', content: '#8A8A8A' },   // LiquidPillDefaults.colors(…)
+  glass: { blur: 9, saturation: 1.65, refractionHeight: 26, refractionAmount: 30, surface: 'rgba(20,20,20,.42)' },
+});
+pill.setSelected(2);           // la app confirma o cambia de ruta (sin onSelect)
+pill.setLabel(3, 'Chat · 2');  // cambiar una etiqueta sin rehacer la barra
+pill.setColors({ accent: '#FF8A3D' });  // cambio de tema
+```
+
+- La barra se ajusta a su contenido (como la `Row` nativa): el contenedor solo la centra (`display:flex; justify-content:center`), abajo y con el margen de la nativa.
+- Medidas de `LiquidPillDefaults`: pestaña de 48 px, relleno de 12, icono de 24, etiqueta a 7 px; tipografía 14/20 peso 500, que la web puede sobrescribir en `.lbp-lab` (la anchura se mide con esa tipografía).
+- Iconos: SVG en línea o cualquier HTML (también una fuente de iconos: `'<span class="material-icons">home</span>'`).
+- `vertical: true`: riel lateral para escritorio si la web lo usa (solo iconos con su `title`, la lente viaja en vertical). Con `vertical` la barra horizontal se oculta en escritorio y el riel en móvil.
+- `maxWidth` (o `pill.setMaxWidth(px)`): si la barra no cabe (6 pestañas en 360 px), estrecha el relleno de las pestañas hasta 4 px en vez de salirse.
+- La posición de la lente tiene **un único dueño**: sin arrastre va siempre a su pestaña. Un gesto cancelado no selecciona nada.
+
+### En React (Vite)
+
+Patrón usado en VoltBody (`src/v3/LiquidNav.tsx`): la librería va en `public/liquidbar/` y se carga en `index.html` (`<link …/liquidbar.css?v=X>` en `<head>` y `<script src="/liquidbar/liquidbar.js?v=X">` antes del módulo de la app). Un hook crea la barra una vez y la sincroniza:
+
+```tsx
+function usePill(host: React.RefObject<HTMLElement>, tabs, selected, onSelect, vertical = false) {
+  const pill = useRef(null), latest = useRef({ selected, onSelect });
+  latest.current = { selected, onSelect };
+  const index = Math.max(0, tabs.findIndex((t) => t.id === selected));
+  useEffect(() => {
+    const p = window.LiquidBar.createPill(host.current, {
+      items: tabs.map((t) => ({ label: t.label, icon: t.iconHtml })), selectedIndex: index, vertical,
+      maxWidth: vertical ? 0 : innerWidth - 48,
+      colors: { accent: getComputedStyle(document.body).getPropertyValue('--accent').trim(), onAccent: '#0A0A0A', content: '#8A8A8A' },
+      onSelect: (i) => { if (tabs[i].id !== latest.current.selected) latest.current.onSelect(tabs[i].id); },
+    });
+    pill.current = p;
+    return () => p.destroy();
+  }, [tabs.map((t) => t.id).join('|'), vertical]);
+  useEffect(() => { pill.current?.setSelected(index); }, [index]);   // la ruta manda
+}
+```
+
+- `onSelect` llega también al soltar la lente sobre la activa: filtra por id antes de navegar o vibrar.
+- Cambio de tema: un `MutationObserver` sobre el atributo del tema que llama a `setColors`.
+- Etiquetas que cambian (no leídos): `setLabel(i, …)` en un efecto, sin rehacer la barra.
+- Móvil abajo (`md:hidden`, contenedor fijo con `justify-content:center`) y, si la web tiene riel lateral en escritorio, otra instancia con `vertical: true` (`hidden md:flex`).
+- La tipografía de la etiqueta se fija en la web con más especificidad: `.mi-barra .lbp-lab { font: 700 14px/18px … }`.
+
 ### Colores
 
 Igual que en [PORTAR.md §5](PORTAR.md#5-ajustar-el-cristal-a-la-paleta): **cambia solo el tinte** (`glass.surface` = color de superficie de la web al 45–60 %, `glass.fallback` = el mismo casi opaco) y el acento de la marca. No toques blur, saturación ni refracción. Para webs claras parte de `glass: LiquidBar.GlassStyle.Light` y `colors.content` oscuro.
@@ -151,6 +206,7 @@ Cada web lleva **su propia copia** de `liquidbar.js` y `liquidbar.css`. Un arreg
 | Web | Repo | Carpeta de la librería | Versión |
 |---|---|---|---|
 | JAMD Desarrollos IA | `mkandreum/JAMD2.0` | `liquidbar/` | 1.0.1 |
+| VoltBody (web, píldora) | `mkandreum/VoltBody` | `public/liquidbar/` | 1.1.0 |
 
 Cada vez que apliques liquidbar web en una web nueva, **añádela a esta tabla**; cada vez que la actualices, cambia su versión.
 GastroOS **no** está en la lista: lleva la versión React antigua (`src/components/LiquidBar.tsx`), con su propio motor, y no le afectan estos arreglos. Si se migra a esta librería, entra en la tabla.
@@ -178,6 +234,7 @@ Después, en la web desplegada: recarga forzada (o vacía la caché), comprueba 
 
 | Versión | Qué cambia | ¿Hay que actualizar las webs? |
 |---|---|---|
+| 1.1.0 | **Nuevo:** `LiquidBar.createPill`, port de `LiquidPillBar` (la píldora fina), con `setSelected`, `setLabel`, `setColors`, riel `vertical` y `maxWidth`. La cápsula no cambia | Solo si quieres la píldora (VoltBody la estrena) |
 | 1.0.1 | **Arreglo:** al arrastrar la lente la web iba cada vez más lenta hasta congelarse. El reloj de animación programaba un fotograma de más cuando algo se animaba dentro del propio fotograma, y se duplicaban sin parar (unos 3 fps → 60 fps) | **Sí, todas** |
 | 1.0.0 | Primera versión web (JAMD2.0) | — |
 

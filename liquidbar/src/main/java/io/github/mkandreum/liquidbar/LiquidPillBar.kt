@@ -71,6 +71,8 @@ import io.github.mkandreum.liquidbar.glass.GlassSource
 import io.github.mkandreum.liquidbar.glass.glassSource
 import io.github.mkandreum.liquidbar.glass.glassSurface
 import io.github.mkandreum.liquidbar.glass.rememberGlassBackdrop
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -143,40 +145,37 @@ fun LiquidPillBar(
     fun centreOf(i: Int) = lefts[i] + widths[i] / 2f
     fun nearestTo(cx: Float) = items.indices.minByOrNull { abs(centreOf(it) - cx) } ?: 0
 
-    // Seguir a la pestaña activa (su anchura cambia mientras la etiqueta se despliega).
-    LaunchedEffect(selectedIndex, items.size) {
-        var first = !measured
-        snapshotFlow { Triple(selectedIndex, centreOf(selectedIndex.coerceIn(items.indices)), widths[selectedIndex.coerceIn(items.indices)]) }
-            .collect { (_, cx, tw) ->
-                if (tw <= 0f || dragging) return@collect
-                if (first) { x.snapTo(cx); w.snapTo(tw); first = false; measured = true }
-                else {
-                    launch { x.animateTo(cx, travel) }
-                    launch { w.animateTo(tw, stretch) }
-                }
+    // Pestaña a la que va la lente. Al soltar un arrastre apunta a donde se soltó hasta que la app confirma la
+    // selección (o, si no la acepta, durante un instante): así no da un tirón hacia la pestaña anterior.
+    val currentSelected by rememberUpdatedState(selectedIndex)
+    var released by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(selectedIndex) { released = null }
+    LaunchedEffect(released) { if (released != null) { delay(400); released = null } }
+    fun targetIndex() = (released ?: currentSelected).coerceIn(items.indices)
+
+    // Un único dueño de la posición: mientras no se arrastra, la lente va SIEMPRE a su pestaña. collectLatest
+    // reinicia la animación cada vez que cambia el destino (la etiqueta se despliega, otra selección…) y el
+    // Animatable conserva la velocidad. Antes la posición la movían tres sitios que podían pisarse y la lente
+    // se quedaba a medio camino con la anchura de la nueva pestaña.
+    LaunchedEffect(items.size) {
+        snapshotFlow {
+            val i = targetIndex()
+            Triple(dragging, centreOf(i), widths[i])
+        }.collectLatest { (drag, cx, tw) ->
+            if (drag || tw <= 0f) return@collectLatest
+            if (!measured) { x.snapTo(cx); w.snapTo(tw); measured = true; return@collectLatest }
+            coroutineScope {
+                launch { x.animateTo(cx, travel) }
+                launch { w.animateTo(tw, stretch) }
             }
+        }
     }
     // La lente está «pulsada» mientras se arrastra o mientras viaja hacia su pestaña; al llegar, se suelta.
     val settleSlop = with(density) { 8.dp.toPx() }
-    val currentSelected by rememberUpdatedState(selectedIndex)
     val holding by remember {
         derivedStateOf {
-            val i = currentSelected.coerceIn(items.indices)
             // Solo cuenta como viaje si la lente se está moviendo: nunca se queda en lupa estando quieta.
-            dragging || (measured && x.isRunning && abs(x.value - centreOf(i)) > settleSlop)
-        }
-    }
-    // Salvaguarda: quieta, sin arrastre y fuera de su sitio (p. ej. la etiqueta cambió de ancho) → a su pestaña.
-    LaunchedEffect(Unit) {
-        snapshotFlow {
-            val i = currentSelected.coerceIn(items.indices)
-            !dragging && measured && !x.isRunning && abs(x.value - centreOf(i)) > 1f
-        }.collect { off ->
-            if (off) {
-                val i = currentSelected.coerceIn(items.indices)
-                launch { x.animateTo(centreOf(i), travel) }
-                launch { w.animateTo(widths[i], stretch) }
-            }
+            dragging || (measured && x.isRunning && abs(x.value - centreOf(targetIndex())) > settleSlop)
         }
     }
     // Un único observador permanente: siempre aplica el último estado, sin depender de recomponer.
@@ -190,29 +189,33 @@ fun LiquidPillBar(
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             dragging = true
-            val minX = lefts.firstOrNull() ?: 0f
-            val maxX = (lefts.lastOrNull() ?: 0f) + (widths.lastOrNull() ?: 0f)
-            while (true) {
-                val ev = awaitPointerEvent()
-                val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
-                if (!ch.pressed) break
-                val dx = ch.positionChange().x
-                if (dx != 0f) {
-                    ch.consume()
-                    val nx = (x.value + dx).coerceIn(minX, maxX)
-                    scope.launch { x.snapTo(nx) }
-                    hovered = nearestTo(nx)
-                    scope.launch { w.animateTo(widths[hovered], stretch) }
+            try {
+                val minX = lefts.firstOrNull() ?: 0f
+                val maxX = (lefts.lastOrNull() ?: 0f) + (widths.lastOrNull() ?: 0f)
+                while (true) {
+                    val ev = awaitPointerEvent()
+                    val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                    if (!ch.pressed) break
+                    val dx = ch.positionChange().x
+                    if (dx != 0f) {
+                        ch.consume()
+                        val nx = (x.value + dx).coerceIn(minX, maxX)
+                        scope.launch { x.snapTo(nx) }
+                        hovered = nearestTo(nx)
+                        scope.launch { w.animateTo(widths[hovered], stretch) }
+                    }
                 }
+                val target = nearestTo(x.value)
+                hovered = target
+                released = target
+                // Siempre avisa: selectedIndex puede estar desfasado dentro del pointerInput y, si la app
+                // arrancó en la primera pestaña, soltar sobre ella no seleccionaba nada.
+                select(target)
+            } finally {
+                // También si el gesto se cancela (otro elemento se queda el dedo, la barra se oculta…):
+                // si se quedaba en true la lente no volvía nunca a su sitio.
+                dragging = false
             }
-            dragging = false
-            val target = nearestTo(x.value)
-            hovered = target
-            scope.launch { x.animateTo(centreOf(target), travel) }
-            scope.launch { w.animateTo(widths[target], stretch) }
-            // Siempre avisa: selectedIndex puede estar desfasado dentro del pointerInput y, si la app
-            // arrancó en la primera pestaña, soltar sobre ella no seleccionaba nada.
-            select(target)
         }
     }
 

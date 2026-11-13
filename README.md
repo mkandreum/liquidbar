@@ -2,7 +2,7 @@
 
 Barras inferiores de **cristal líquido** para Jetpack Compose, 100 % nativas (Kotlin + `RenderEffect` + shaders AGSL), sin dependencias más allá de Compose.
 
-También para **web**: [`web/`](web) es la misma cápsula con lupa, muelles y plegado en JavaScript sin dependencias (refracción con filtros SVG en Chromium). Cómo aplicarla en cualquier web: [docs/WEB.md](docs/WEB.md).
+También para **web**: [`web/`](web) es la misma cápsula con lupa, muelles y plegado (y, desde la 1.1.0, la píldora `LiquidPillBar`) en JavaScript sin dependencias (refracción con filtros SVG en Chromium). Cómo aplicarla en cualquier web: [docs/WEB.md](docs/WEB.md).
 
 > **¿Es una web?** Sigue [docs/WEB.md](docs/WEB.md). **¿Tienes una barra Compose normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final. Para migrar cualquier píldora conservando el diseño de cada app (y dejar `+`/buscar a la derecha), usa [docs/MIGRAR.md](docs/MIGRAR.md).
 
