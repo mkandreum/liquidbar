@@ -2,7 +2,9 @@
 
 Barras inferiores de **cristal líquido** para Jetpack Compose, 100 % nativas (Kotlin + `RenderEffect` + shaders AGSL), sin dependencias más allá de Compose.
 
-> **¿Tienes una barra normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final. Para migrar cualquier píldora conservando el diseño de cada app (y dejar `+`/buscar a la derecha), usa [docs/MIGRAR.md](docs/MIGRAR.md).
+También para **web**: [`web/`](web) es la misma cápsula con lupa, muelles y plegado en JavaScript sin dependencias (refracción con filtros SVG en Chromium). Cómo aplicarla en cualquier web: [docs/WEB.md](docs/WEB.md).
+
+> **¿Es una web?** Sigue [docs/WEB.md](docs/WEB.md). **¿Tienes una barra Compose normal y la quieres de cristal?** Sigue [docs/PORTAR.md](docs/PORTAR.md): pasos, código de antes y después (ZaveBill), errores conocidos y comprobación final. Para migrar cualquier píldora conservando el diseño de cada app (y dejar `+`/buscar a la derecha), usa [docs/MIGRAR.md](docs/MIGRAR.md).
 
 ## Estilos
 
@@ -79,6 +81,11 @@ liquidbar/src/main/java/io/github/mkandreum/liquidbar/
 ├── LiquidGlass.kt          estilo y modificador de cristal, estiramiento elástico
 ├── LiquidMotion.kt         curvas de muelle con duración fija y tiempos
 └── glass/                  motor: captura, superficie AGSL, brillo y arrastre
+
+web/
+├── liquidbar.js            la cápsula web: muelles, lupa, plegado, refracción SVG
+├── liquidbar.css           estructura y filos del cristal
+└── demo.html               demo (python3 -m http.server --directory web)
 ```
 
 Compilar: `./gradlew :liquidbar:assembleRelease` (JDK 17, SDK 36).

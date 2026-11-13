@@ -4,6 +4,8 @@ Guía para pasar una barra inferior existente a **LiquidBar** conservando el dis
 tipografía, altura, iconos y marca) y ganando todas las funciones de la librería: lente arrastrable con
 aumento y tinte, muelles, plegado, estiramiento elástico, brillo y botones de acción separados.
 
+> ¿Es una web? La versión web (misma cápsula, lupa y muelles) se aplica con [WEB.md](WEB.md).
+
 > Regla de oro: **se cambia el material y el comportamiento, no la identidad**. El acento, los iconos y las
 > etiquetas son de la app; el cristal, la lente y los gestos son de LiquidBar.
 

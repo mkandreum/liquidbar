@@ -4,7 +4,7 @@ Esta guía convierte una barra inferior Compose «normal» (fondo sólido, borde
 
 La lupa, los muelles y las animaciones están explicados a fondo en la [sección 9](#9-lupa-animaciones-y-muelles). Para migrar una píldora propia conservando su diseño y dejar `+`/buscar a la derecha, usa [MIGRAR.md](MIGRAR.md).
 
-Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden.
+Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden. **Si el proyecto es una web** (HTML, React, Vue…), la guía es [WEB.md](WEB.md): misma barra, mismos valores, en JavaScript.
 
 ---
 

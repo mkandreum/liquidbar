@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiquidBar web</title>
+<link rel="stylesheet" href="liquidbar.css">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0b0f; color: #f2f2f7; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { padding: 24px 16px 140px; max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 34px; margin: 24px 0 8px; }
+  p { color: #b9b9c3; line-height: 1.5; }
+  .card { height: 180px; border-radius: 28px; margin: 16px 0; display: grid; place-items: end start; padding: 20px; font-weight: 700; font-size: 22px; color: #fff; }
+  .c1 { background: linear-gradient(135deg, #ff5a36, #ffb800); }
+  .c2 { background: linear-gradient(135deg, #2f5bff, #6fb1ff); }
+  .c3 { background: linear-gradient(135deg, #c8f03c, #1fbf75); color: #0b1437; }
+  .c4 { background: repeating-linear-gradient(45deg, #fff 0 14px, #111 14px 28px); }
+  .c5 { background: linear-gradient(135deg, #ff8fc0, #8e1e33); }
+  .text { font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; }
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(calc(100vw - 32px), 460px); z-index: 10; }
+  #estado { position: fixed; top: 12px; right: 12px; font: 12px/1.3 ui-monospace, monospace; background: #0008; padding: 6px 10px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div id="estado"></div>
+<main>
+  <h1>LiquidBar web</h1>
+  <p>Mantén pulsada la pestaña activa y arrástrala: crece, se vuelve lupa con arcoíris en el canto y amplía los iconos. Toca otra pestaña para verla viajar. Baja para plegar la barra; sube para abrirla.</p>
+  <div class="card c1">Naranja</div>
+  <p class="text">El cristal refracta lo que pasa por debajo: textos, fotos y colores.</p>
+  <div class="card c2">Azul</div>
+  <div class="card c4">Rayas</div>
+  <div class="card c3">Lima</div>
+  <p class="text">Sigue bajando para ver el plegado con muelle.</p>
+  <div class="card c5">Vino</div>
+  <div class="card c1">Naranja</div>
+  <div class="card c2">Azul</div>
+</main>
+<nav class="dock" id="barra" aria-label="Navegación"></nav>
+<script src="liquidbar.js"></script>
+<script>
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const bar = LiquidBar.create(document.getElementById('barra'), {
+    items: [
+      { label: 'Inicio', icon: svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>') },
+      { label: 'Buscar', icon: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>') },
+      { label: 'Biblioteca', icon: svg('<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>') },
+      { label: 'Perfil', icon: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>') },
+    ],
+    selectedIndex: 0,
+    onSelect: (i) => { document.getElementById('estado').textContent = `onSelect(${i})`; },
+    action: { label: 'Nuevo', icon: svg('<path d="M12 5v14M5 12h14"/>'), onClick: () => { document.getElementById('estado').textContent = 'acción'; } },
+    detachAction: new URLSearchParams(location.search).get('detach') !== '0',
+    fold: { mode: new URLSearchParams(location.search).get('fold') || 'direction' },
+  });
+  document.getElementById('estado').textContent = `refracción: ${LiquidBar.support.refraction ? 'sí' : 'no'}`;
+  window.bar = bar;
+</script>
+</body>
+</html>
