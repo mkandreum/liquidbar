@@ -57,6 +57,8 @@ data class GlassLook(
     val dispersion: Float = 0f,
     /** Suma la dirección radial a la normal: lente abombada. */
     val depthEffect: Boolean = false,
+    /** Aumento de lo que hay debajo, centrado en la superficie (1 = sin lupa). Lo usan las lentes de LiquidUI. */
+    val zoom: Float = 1f,
     val surface: Color = Color.Transparent,
     val rim: Color = Color.Transparent,
     val rimWidth: Float = 0f,
@@ -177,7 +179,7 @@ private class GlassNode(
             val filter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(l.saturation) })
             effect = if (effect == null) RenderEffect.createColorFilterEffect(filter) else RenderEffect.createColorFilterEffect(filter, effect)
         }
-        if (glassRefractionSupported && l.refractionHeight > 0.5f && l.refractionAmount > 0.5f) {
+        if (glassRefractionSupported && ((l.refractionHeight > 0.5f && l.refractionAmount > 0.5f) || l.zoom > 1.001f)) {
             val refraction = refraction(l, pad)
             effect = if (effect == null) refraction else RenderEffect.createChainEffect(refraction, effect)
         }
@@ -195,6 +197,7 @@ private class GlassNode(
         s.setFloatUniform("amount", l.refractionAmount)
         s.setFloatUniform("dispersion", l.dispersion)
         s.setFloatUniform("depthEffect", if (l.depthEffect) 1f else 0f)
+        s.setFloatUniform("zoom", l.zoom.coerceAtLeast(1f))
         return RenderEffect.createRuntimeShaderEffect(s, "content")
     }
 
@@ -227,6 +230,7 @@ uniform float band;
 uniform float amount;
 uniform float dispersion;
 uniform float depthEffect;
+uniform float zoom;
 
 float cornerFor(float2 p) {
     if (p.x < 0.0) return p.y < 0.0 ? radii.x : radii.w;
@@ -247,7 +251,10 @@ float circleMap(float x) {
 half4 main(float2 coord) {
     float2 p = coord - pad - size * 0.5;
     float d = shapeDistance(p);
-    if (d > 0.0 || -d >= band) return content.eval(coord);
+    if (d > 0.0) return content.eval(coord);
+    // Lupa: dentro de la forma se muestrea más cerca del centro (zoom = 1 lo deja igual).
+    float2 base = pad + size * 0.5 + p / zoom;
+    if (-d >= band) return content.eval(base);
     float t = 1.0 - (-d / band);
     float bend = circleMap(t) * amount;
     // Normal analítica del borde redondeado (hacia fuera).
@@ -263,7 +270,7 @@ half4 main(float2 coord) {
         n = normalize(n + radial);
     }
     // Muestrea HACIA DENTRO: el filo enseña el contenido que hay bajo el cristal, no el de fuera.
-    float2 refracted = coord - n * bend;
+    float2 refracted = base - n * bend;
     if (dispersion <= 0.0) return content.eval(refracted);
     // Aberración de la lente: nula en los ejes y máxima en las diagonales; rojo y azul se cruzan.
     float intensity = dispersion * (p.x * p.y) / max((size.x * 0.5) * (size.y * 0.5), 0.0001);

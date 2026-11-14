@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LiquidUI web</title>
+<link rel="stylesheet" href="liquidbar.css">
+<link rel="stylesheet" href="liquidui.css">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0b10; color: #f2f2f7; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 18px 16px 140px; }
+  h1 { font-size: 30px; margin: 12px 0 4px; letter-spacing: -.02em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #8e8e98; margin: 26px 0 10px; }
+  .card { background: #17171f; border-radius: 22px; padding: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+  .row + .row { border-top: 1px solid #ffffff12; }
+  .photo { position: relative; height: 200px; border-radius: 24px; overflow: hidden; background:
+    radial-gradient(circle at 25% 30%, #ffb800 0 18%, transparent 19%), radial-gradient(circle at 70% 60%, #ff5a36 0 22%, transparent 23%),
+    linear-gradient(135deg, #2f5bff, #c8f03c); }
+  .photo .chips { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .photo .chip { padding: 7px 12px; font-size: 13px; font-weight: 700; color: #fff; border-radius: 999px; }
+  .photo .fav { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; border: 0; }
+  .btns { display: flex; gap: 12px; align-items: center; }
+  .gb { height: 48px; padding: 0 20px; border: 0; color: #fff; font: inherit; font-weight: 700; border-radius: 999px; }
+  .gb.c { width: 52px; padding: 0; display: grid; place-items: center; }
+  .bell { position: relative; width: 48px; height: 48px; border-radius: 16px; background: #22222c; display: grid; place-items: center; border: 0; color: #fff; }
+  .bell .lui-badge { position: absolute; top: -4px; right: -6px; }
+  .chart { position: relative; height: 170px; border-radius: 20px; background: #17171f; overflow: hidden; }
+  .chart svg { width: 100%; height: 100%; display: block; }
+  .list .item { display: flex; align-items: center; gap: 12px; padding: 14px; background: #17171f; border-radius: 18px; margin-bottom: 10px; }
+  .list .dot { width: 40px; height: 40px; border-radius: 12px; }
+  .fab { position: fixed; right: 20px; bottom: 26px; z-index: 50; width: 60px; height: 60px; border: 0; border-radius: 50%; color: #fff; display: grid; place-items: center; }
+  .searchdock { position: fixed; left: 16px; right: 96px; bottom: 28px; z-index: 50; display: flex; }
+  #estado { position: fixed; top: 10px; right: 10px; z-index: 2000; font: 11px ui-monospace, monospace; background: #0009; padding: 4px 8px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="estado"></div>
+<main>
+  <h1>LiquidUI</h1>
+  <p style="color:#a0a0aa;margin:0">Piezas de cristal con los muelles y la lupa de liquidbar.</p>
+
+  <h2>1 · Selector segmentado</h2>
+  <div id="seg"></div>
+
+  <h2>2 · Interruptores</h2>
+  <div class="card">
+    <div class="row"><span>Notificaciones</span><button id="tg1"></button></div>
+    <div class="row"><span>Modo oscuro</span><button id="tg2"></button></div>
+  </div>
+
+  <h2>3 · Deslizador</h2>
+  <div class="card"><div id="sl"></div><div id="sl2" style="margin-top:18px"></div></div>
+
+  <h2>4 · Botones de cristal · 5 · Chips sobre fotos</h2>
+  <div class="photo" id="photo">
+    <button class="fav" id="fav" aria-label="Favorito"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-4.4-9.3-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.3 6C19 16.6 12 21 12 21z"/></svg></button>
+    <div class="chips"><span class="chip">Sin gluten</span><span class="chip">Vegano</span><span class="chip">12,50 €</span></div>
+  </div>
+  <div class="btns" style="margin-top:14px">
+    <button class="gb" id="gb1">Pedir ahora</button>
+    <button class="gb c" id="gb2" aria-label="Escanear QR"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></button>
+  </div>
+
+  <h2>6 · Insignia · 7 · Isla líquida</h2>
+  <div class="btns">
+    <button class="bell" id="bell" aria-label="Avisos"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg><span id="badge"></span></button>
+    <button class="gb" id="isl">Mesa 7 lista</button>
+  </div>
+
+  <h2>9 · Lupa para gráficas (mantén pulsado)</h2>
+  <div class="chart" id="chart"></div>
+
+  <h2>11 · Menú de pulsación larga · 12 · Tira para recargar</h2>
+  <div class="list" id="list">
+    <div class="item"><span class="dot" style="background:#ff5a36"></span><div><b>Cena en Casa Pepe</b><br><small style="color:#999">Pagó Ana · 84,00 €</small></div></div>
+    <div class="item"><span class="dot" style="background:#2f5bff"></span><div><b>Gasolina</b><br><small style="color:#999">Pagaste tú · 52,30 €</small></div></div>
+    <div class="item"><span class="dot" style="background:#c8f03c"></span><div><b>Supermercado</b><br><small style="color:#999">Pagó Luis · 31,75 €</small></div></div>
+  </div>
+
+  <h2>13 · Hoja inferior</h2>
+  <button class="gb" id="openSheet">Abrir filtros</button>
+</main>
+
+<div class="searchdock"><div id="search"></div></div>
+<button class="fab" id="fab" aria-label="Nuevo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+
+<script src="liquidbar.js"></script>
+<script src="liquidui.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const say = (t) => { $('#estado').textContent = t; };
+  const U = window.LiquidUI;
+  window.ui = {};
+  ui.seg = U.segmented($('#seg'), { items: ['Día', 'Semana', 'Mes', 'Año'], selectedIndex: 1, accent: '#0A84FF', onSelect: (i) => say(`segmento ${i}`) });
+  ui.tg1 = U.toggle($('#tg1'), { checked: true, label: 'Notificaciones', onChange: (v) => say(`notif ${v}`) });
+  ui.tg2 = U.toggle($('#tg2'), { checked: false, label: 'Modo oscuro', accent: '#0A84FF' });
+  ui.sl = U.slider($('#sl'), { min: 0, max: 100, value: 40, ticks: 11, label: 'Volumen', format: (v) => `${v} %`, onInput: (v) => say(`vol ${v}`) });
+  ui.sl2 = U.slider($('#sl2'), { min: 0, max: 84, step: 0.5, value: 42, ticks: ['0 €', '21', '42', '63', '84 €'], accent: '#30D158', label: 'Tu parte', format: (v) => `${v.toFixed(2)} €` });
+  ui.fav = U.glassButton($('#fav'), { tint: '#ff3b6b', radius: null });
+  ui.gb1 = U.glassButton($('#gb1'), { tint: '#0A84FF' });
+  ui.gb2 = U.glassButton($('#gb2'));
+  document.querySelectorAll('.chip').forEach((c, i) => U.glassChip(c, { delay: 200 + i * 80 }));
+  ui.badge = U.badge($('#badge'), { value: 3 });
+  $('#bell').addEventListener('click', () => ui.badge.set((ui.badge.value || 0) + 1));
+  $('#isl').addEventListener('click', () => U.island().show({ title: 'Mesa 7 lista', text: 'Cocina → sala · 2 platos', icon: svg('<path d="M20 6 9 17l-5-5"/>'), accent: '#30D158' }));
+  ui.gbIsl = U.glassButton($('#isl'), { tint: '#30D158' });
+  // gráfica
+  const pts = [12, 18, 15, 26, 22, 31, 28, 40, 36, 44, 39, 52];
+  const chart = $('#chart');
+  const draw = () => {
+    const W = chart.clientWidth, H = chart.clientHeight, sx = (i) => 16 + (i * (W - 32)) / (pts.length - 1), sy = (v) => H - 18 - (v / 56) * (H - 36);
+    const d = pts.map((v, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`).join(' ');
+    chart.innerHTML = `<svg viewBox="0 0 ${W} ${H}"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0A84FF" stop-opacity=".45"/><stop offset="1" stop-color="#0A84FF" stop-opacity="0"/></linearGradient></defs>
+      <path d="${d} L${sx(pts.length - 1)} ${H} L${sx(0)} ${H}Z" fill="url(#g)"/><path d="${d}" fill="none" stroke="#0A84FF" stroke-width="3" stroke-linejoin="round"/>
+      ${pts.map((v, i) => `<circle cx="${sx(i)}" cy="${sy(v)}" r="3.5" fill="#fff"/><text x="${sx(i)}" y="${H - 4}" font-size="9" fill="#777" text-anchor="middle">${'EFMAMJJASOND'[i]}</text>`).join('')}</svg>`;
+    return { sx, sy, W };
+  };
+  let geo = draw();
+  ui.chart = U.chartLens(chart, { valueAt: (x) => { const i = Math.max(0, Math.min(pts.length - 1, Math.round(((x - 16) / (geo.W - 32)) * (pts.length - 1)))); return { key: i, value: `${pts[i] * 10} €`, label: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][i], y: geo.sy(pts[i]) }; } });
+  // abanico
+  ui.fanBtn = U.glassButton($('#fab'), { tint: '#0A84FF' });
+  ui.fan = U.fan($('#fab'), { items: [
+    { label: 'Gasto', icon: svg('<path d="M12 5v14M5 12h14"/>') },
+    { label: 'Ingreso', icon: svg('<path d="M12 19V5M5 12l7-7 7 7"/>') },
+    { label: 'Meta', icon: svg('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>') },
+    { label: 'Escanear', icon: svg('<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/>') },
+  ], onSelect: (it) => say(`fan: ${it.label}`) });
+  $('#fab').addEventListener('click', () => say('fab: click'));
+  // buscar
+  ui.search = U.searchMorph($('#search'), { placeholder: 'Buscar gastos', onInput: (v) => say(`busca ${v}`) });
+  // menú contextual
+  document.querySelectorAll('#list .item').forEach((it) => U.contextMenu(it, { items: [
+    { label: 'Editar', icon: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/>') },
+    { label: 'Duplicar', icon: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>') },
+    { label: 'Compartir', icon: svg('<path d="M12 3v13M7 8l5-5 5 5M5 14v5h14v-5"/>') },
+    { label: 'Eliminar', icon: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'), destructive: true },
+  ], onSelect: (x) => say(`menú: ${x.label}`) }));
+  ui.pull = U.pullRefresh({ onRefresh: () => new Promise((r) => setTimeout(r, 1400)) });
+  // hoja
+  const body = document.createElement('div');
+  body.innerHTML = `<div class="row"><span>Solo pendientes</span><button id="tg3"></button></div><div style="padding:12px 0"><div id="seg2"></div></div><div id="sl3"></div>` + Array.from({ length: 10 }, (_, i) => `<div class="row"><span>Categoría ${i + 1}</span><span style="color:#888">›</span></div>`).join('');
+  ui.sheet = U.sheet({ title: 'Filtros', content: body, detents: [0.5, 0.9] });
+  U.toggle(body.querySelector('#tg3'), { checked: true });
+  U.segmented(body.querySelector('#seg2'), { items: ['Todos', 'Míos', 'Debo'], selectedIndex: 0, accent: '#30D158' });
+  U.slider(body.querySelector('#sl3'), { min: 0, max: 500, step: 10, value: 200, format: (v) => `≤ ${v} €` });
+  $('#openSheet').addEventListener('click', () => ui.sheet.open());
+  say(`refracción: ${LiquidBar.support.refraction ? 'sí' : 'no'}`);
+</script>
+</body>
+</html>

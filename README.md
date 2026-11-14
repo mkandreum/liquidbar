@@ -1,6 +1,10 @@
-# LiquidBar
+# LiquidUI
+
+> Antes `mkandreum/liquidbar`. Los paquetes (`io.github.mkandreum.liquidbar`) y archivos (`liquidbar.js`) conservan su nombre para no romper las apps.
 
 Barras inferiores de **cristal líquido** para Jetpack Compose, 100 % nativas (Kotlin + `RenderEffect` + shaders AGSL), sin dependencias más allá de Compose.
+
+**Piezas de cristal (LiquidUI)**: isla, abanico de burbujas, lupa de gráficas, interruptor, deslizador, selector segmentado, menú de pulsación larga, hoja, buscar que se transforma, chips, insignias, botón de cristal y tirar para recargar, en Compose (`ui/`) y web (`web/liquidui.js`). Guía: [docs/UI.md](docs/UI.md). **Skill de diseño** para Claude Code: [skill/liquidui](skill/liquidui/SKILL.md) (qué pieza va dónde, valores, chuleta Compose/web/React y cómo quedó en cada app).
 
 También para **web**: [`web/`](web) es la misma cápsula con lupa, muelles y plegado (y, desde la 1.1.0, la píldora `LiquidPillBar`) en JavaScript sin dependencias (refracción con filtros SVG en Chromium). Cómo aplicarla en cualquier web: [docs/WEB.md](docs/WEB.md).
 

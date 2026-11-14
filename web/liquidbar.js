@@ -1,5 +1,5 @@
 /*!
- * LiquidBar web v1.1.0 — port 1:1 de la barra de cristal líquido de github.com/mkandreum/liquidbar
+ * LiquidBar web v1.2.0 — port 1:1 de la barra de cristal líquido de github.com/mkandreum/liquidUI
  * (Jetpack Compose) a JavaScript sin dependencias.
  *
  * Mismos valores que la versión nativa (LiquidBar.kt, glass/Touch.kt, LiquidMotion.kt, GlassSurface.kt):
@@ -1624,6 +1624,18 @@
     support,
     spring,
     springEasing,
-    version: '1.1.0',
+    version: '1.2.0',
+    /**
+     * Motor compartido para las piezas de cristal de liquidui.js (interruptor, deslizador, isla, hoja…).
+     * No es API para las webs: úsalo solo desde componentes del repo liquidUI.
+     */
+    core: {
+      clamp, clamp01, lerp, Anim, spring, tween, springEasing, FastOutSlowIn, EaseOut,
+      kick, waitUntil, nextFrame,
+      onFrame(fn) { frameHooks.add(fn); kick(); return () => frameHooks.delete(fn); },
+      parseColor, css, alphaOf, over, put, sigma, support, backdropProp, backdrop, paintGlass,
+      GlassStyle, RimFilter, LensFilter, Glow, elastic, iconNode, roundRectPath,
+      svgEl, defs, rimSample, enc, newCanvas, nextId: () => ++uid,
+    },
   };
 });

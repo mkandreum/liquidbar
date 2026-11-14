@@ -22,7 +22,7 @@ mkdir -p liquidbar
 cp ~/Descargas/liquidbar/web/liquidbar.js ~/Descargas/liquidbar/web/liquidbar.css liquidbar/
 ```
 
-(o `git clone https://github.com/mkandreum/liquidbar` y copiar desde `web/`). No se edita en el proyecto: los ajustes se hacen **en el repo `liquidbar`** y se vuelven a copiar, para que todas las webs se comporten igual. Al terminar, **apunta la web en la tabla del [apartado 7](#7-actualizar-las-webs-ya-desplegadas)** para que reciba los arreglos.
+(o `git clone https://github.com/mkandreum/liquidUI` y copiar desde `web/`). No se edita en el proyecto: los ajustes se hacen **en el repo `liquidbar`** y se vuelven a copiar, para que todas las webs se comporten igual. Al terminar, **apunta la web en la tabla del [apartado 7](#7-actualizar-las-webs-ya-desplegadas)** para que reciba los arreglos.
 
 Comprueba que el servidor la sirve:
 - servidor Node propio: que sirva estáticos de esa carpeta; si hay `Dockerfile` que copia archivos sueltos, añade `COPY liquidbar ./liquidbar` (en JAMD hizo falta);
@@ -206,10 +206,13 @@ Cada web lleva **su propia copia** de `liquidbar.js` y `liquidbar.css`. Un arreg
 | Web | Repo | Carpeta de la librería | Versión |
 |---|---|---|---|
 | JAMD Desarrollos IA | `mkandreum/JAMD2.0` | `liquidbar/` | 1.0.1 |
-| VoltBody (web, píldora) | `mkandreum/VoltBody` | `public/liquidbar/` | 1.1.0 |
+| VoltBody (web, píldora) | `mkandreum/VoltBody` | `public/liquidbar/` | 1.2.0 + LiquidUI |
+| GastroOS | `mkandreum/GastroOS` | `public/liquidbar/` | 1.2.0 + LiquidUI |
+| DiviFriends | `mkandreum/DiviFriends` | `public/liquidbar/` | 1.2.0 + LiquidUI |
+| ListPro | `mkandreum/listpro` | `web/public/liquidbar/` | 1.2.0 + LiquidUI |
 
 Cada vez que apliques liquidbar web en una web nueva, **añádela a esta tabla**; cada vez que la actualices, cambia su versión.
-GastroOS **no** está en la lista: lleva la versión React antigua (`src/components/LiquidBar.tsx`), con su propio motor, y no le afectan estos arreglos. Si se migra a esta librería, entra en la tabla.
+GastroOS usa la librería solo para LiquidUI (isla, chips, interruptores, lupa…); su barra sigue siendo la versión React antigua (`src/components/LiquidBar.tsx`), que no reciben los arreglos de la barra.
 
 ### Qué versión lleva una web
 
@@ -225,6 +228,7 @@ En el navegador, en la web desplegada: `LiquidBar.version` en la consola.
 cd ~/Descargas/liquidbar && git pull
 cd <repo de la web>
 cp ~/Descargas/liquidbar/web/liquidbar.js ~/Descargas/liquidbar/web/liquidbar.css liquidbar/
+# si usa LiquidUI: también liquidui.js, liquidui.css y web/react/LiquidUI.tsx (a src/…)
 git add liquidbar && git commit -m "liquidbar web vX.Y.Z" && git push   # Coolify despliega desde main
 ```
 
@@ -234,6 +238,7 @@ Después, en la web desplegada: recarga forzada (o vacía la caché), comprueba 
 
 | Versión | Qué cambia | ¿Hay que actualizar las webs? |
 |---|---|---|
+| 1.2.0 | `LiquidBar.core` expone el motor para **LiquidUI** (`liquidui.js`/`.css`, 13 piezas, ver [UI.md](UI.md)) y el adaptador `react/LiquidUI.tsx`. La barra no cambia | Solo las que usen LiquidUI (copiar también `liquidui.*` y el adaptador) |
 | 1.1.0 | **Nuevo:** `LiquidBar.createPill`, port de `LiquidPillBar` (la píldora fina), con `setSelected`, `setLabel`, `setColors`, riel `vertical` y `maxWidth`. La cápsula no cambia | Solo si quieres la píldora (VoltBody la estrena) |
 | 1.0.1 | **Arreglo:** al arrastrar la lente la web iba cada vez más lenta hasta congelarse. El reloj de animación programaba un fotograma de más cuando algo se animaba dentro del propio fotograma, y se duplicaban sin parar (unos 3 fps → 60 fps) | **Sí, todas** |
 | 1.0.0 | Primera versión web (JAMD2.0) | — |

@@ -4,7 +4,7 @@ Esta guía convierte una barra inferior Compose «normal» (fondo sólido, borde
 
 La lupa, los muelles y las animaciones están explicados a fondo en la [sección 9](#9-lupa-animaciones-y-muelles). Para migrar una píldora propia conservando su diseño y dejar `+`/buscar a la derecha, usa [MIGRAR.md](MIGRAR.md).
 
-Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden. **Si el proyecto es una web** (HTML, React, Vue…), la guía es [WEB.md](WEB.md): misma barra, mismos valores, en JavaScript.
+Está pensada también como instrucciones para un asistente: si en otro proyecto se pide «aplica liquidbar», hay que seguir estos pasos en orden. Para las piezas de cristal (isla, abanico, lupa, interruptor…) sigue [UI.md](UI.md). **Si el proyecto es una web** (HTML, React, Vue…), la guía es [WEB.md](WEB.md): misma barra, mismos valores, en JavaScript.
 
 ---
 
@@ -38,7 +38,7 @@ liquidbar/src/main/java/io/github/mkandreum/liquidbar/   →   app/src/main/java
 En ZaveBill se copió así y se mantiene sincronizado con:
 
 ```bash
-rsync -a --delete ~/Documentos/liquidbar/liquidbar/src/main/java/io/github/mkandreum/liquidbar/ \
+rsync -a --delete ~/Descargas/liquidUI/liquidbar/src/main/java/io/github/mkandreum/liquidbar/ \
   app/src/main/java/io/github/mkandreum/liquidbar/
 ```
 

@@ -29,7 +29,7 @@ Apunta de la barra actual:
 
 ## 1. Copiar la librería
 
-Dos opciones; elige una y mantenla sincronizada con `mkandreum/liquidbar`:
+Dos opciones; elige una y mantenla sincronizada con `mkandreum/liquidUI`:
 
 **Módulo Gradle** (recomendado si el proyecto es multi-módulo):
 
@@ -44,7 +44,7 @@ implementation(project(":liquidbar"))
 **Paquete copiado** (apps de un solo módulo):
 
 ```bash
-rsync -a --delete ~/Documentos/liquidbar/liquidbar/src/main/java/io/github/mkandreum/liquidbar/ \
+rsync -a --delete ~/Descargas/liquidUI/liquidbar/src/main/java/io/github/mkandreum/liquidbar/ \
   app/src/main/java/io/github/mkandreum/liquidbar/
 ```
 
